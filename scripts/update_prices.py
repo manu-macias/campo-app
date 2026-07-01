@@ -50,7 +50,12 @@ SOJA_SEED = {
 
 
 def fetch(url, method="GET", headers=None, data=None, timeout=20):
-    req = urllib.request.Request(url, method=method, data=data, headers=headers or {})
+    # User-Agent por defecto: dolarapi.com / ArgentinaDatos devuelven 403 a
+    # requests sin identificarse (p. ej. desde runners de GitHub Actions).
+    h = {"User-Agent": "Mozilla/5.0 campo-app"}
+    if headers:
+        h.update(headers)
+    req = urllib.request.Request(url, method=method, data=data, headers=h)
     return urllib.request.urlopen(req, timeout=timeout).read().decode("utf-8")
 
 
