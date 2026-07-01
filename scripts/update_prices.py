@@ -160,8 +160,7 @@ def main():
 
     cutoff = (datetime.date.today() - datetime.timedelta(days=DAYS)).isoformat()
     existing = sb_get_existing(cutoff)
-    dolar_points = sum(1 for p in existing.values() if p.get("dolar"))
-    soja_points  = sum(1 for p in existing.values() if p.get("soja"))
+    soja_points = sum(1 for p in existing.values() if p.get("soja"))
 
     # to_write: solo las fechas/campos que este run efectivamente calculó
     # (no reescribimos toda la historia — merge-duplicates preserva el resto).
@@ -171,14 +170,16 @@ def main():
         e = to_write.setdefault(fecha, {})
         e.update({k: v for k, v in kwargs.items() if v is not None})
 
-    # Backfill de dólar (solo si la historia está vacía o casi).
-    if dolar_points < 30:
-        try:
-            for fecha, val in dolar_backfill().items():
-                put(fecha, dolar=val)
-            print(f"✓ backfill dólar: {len(to_write)} días")
-        except Exception as e:
-            print(f"✗ backfill dólar: {e}")
+    # Backfill de dólar: es UN solo request a ArgentinaDatos con toda la serie,
+    # así que lo corremos SIEMPRE (idempotente por el upsert). Barato y evita
+    # huecos si una corrida previa quedó a medias.
+    try:
+        serie = dolar_backfill()
+        for fecha, val in serie.items():
+            put(fecha, dolar=val)
+        print(f"✓ backfill dólar: {len(serie)} días")
+    except Exception as e:
+        print(f"✗ backfill dólar: {e}")
 
     # Serie diaria de soja (BCR). Si hay pocos puntos, backfill completo;
     # si ya está densa, solo refrescamos las últimas 2 semanas.
