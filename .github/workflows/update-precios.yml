@@ -1,0 +1,18 @@
+name: Actualizar precios (Supabase)
+
+on:
+  schedule:
+    - cron: '30 21 * * 1-5'  # 18:30 Argentina (UTC-3), lunes a viernes — pizarra ya publicada
+  workflow_dispatch:          # permite correrlo manualmente
+
+jobs:
+  update-precios:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upsert precios en Supabase (BCR soja + dólar oficial)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python3 scripts/update_prices.py

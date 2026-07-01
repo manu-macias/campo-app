@@ -1,0 +1,14 @@
+{
+  "appId": "ar.campoapp.app",
+  "appName": "campo-app",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "App": {
+      "iosScheme": "campoapp",
+      "androidScheme": "campoapp"
+    }
+  }
+}

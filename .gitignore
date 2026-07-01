@@ -1,0 +1,14 @@
+node_modules
+dist
+.env
+.env.local
+.DS_Store
+
+# Capacitor (Fase 4b)
+ios/App/Pods
+android/.gradle
+android/app/build
+# assets web copiados por `cap sync` (se regeneran desde dist/)
+android/app/src/main/assets/public
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
