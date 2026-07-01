@@ -210,12 +210,22 @@ def main():
         return
 
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    rows = [{"fecha": f, "updated_at": now, **vals} for f, vals in sorted(to_write.items())]
-    sb_upsert(rows)
+    items = sorted(to_write.items())
 
-    sd = sum(1 for r in rows if r.get("dolar") is not None)
-    ss = sum(1 for r in rows if r.get("soja") is not None)
-    print(f"→ upsert precios: {len(rows)} filas (dólar {sd}, soja {ss})")
+    # PostgREST exige que todos los objetos de un mismo POST tengan las MISMAS
+    # claves. Además, con merge-duplicates cada columna enviada se sobreescribe,
+    # así que no podemos mandar soja=null en un día que ya tiene soja. Por eso
+    # separamos en dos upserts de claves uniformes (soja y dólar); los días con
+    # ambos van en los dos y se mergean sin pisarse.
+    soja_rows  = [{"fecha": f, "updated_at": now, "soja":  v["soja"]}
+                  for f, v in items if v.get("soja")  is not None]
+    dolar_rows = [{"fecha": f, "updated_at": now, "dolar": v["dolar"]}
+                  for f, v in items if v.get("dolar") is not None]
+
+    if soja_rows:  sb_upsert(soja_rows)
+    if dolar_rows: sb_upsert(dolar_rows)
+
+    print(f"→ upsert precios: soja {len(soja_rows)} filas, dólar {len(dolar_rows)} filas")
 
 
 if __name__ == "__main__":
