@@ -69,7 +69,6 @@ export default function Ventas({ grupo, campania, socios, ventas, precios, onCam
           <input type="number" min="0" step="0.5" placeholder="Toneladas"
             value={form.tn} onChange={e => setForm(f => ({ ...f, tn: e.target.value }))} />
           <div className="venta-precio" title="Precio oficial del día — no editable">
-            <span className="lock" aria-hidden="true">🔒</span>
             {precioHoy ? '$' + FMT(precioHoy) + ' /tn' : 'Sin precio del día'}
           </div>
         </div>

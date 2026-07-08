@@ -40,7 +40,7 @@ export function PriceCard({ label, value, unit, accent, sub = 'dato oficial' }) 
     <div className="ctrl">
       <div className="ctrl-label">{label}</div>
       <div className="num" style={accent ? { color: accent } : undefined}>{FMT_AR(value)}</div>
-      <div className="hint hint-lock"><span aria-hidden="true">🔒</span> {unit} · {sub}</div>
+      <div className="hint">{unit} · {sub}</div>
     </div>
   )
 }
