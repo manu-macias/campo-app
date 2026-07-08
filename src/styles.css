@@ -169,7 +169,18 @@ input:focus { border-color: var(--soja); }
   background: var(--surface2); border: none; color: var(--text);
   padding: 11px 13px; cursor: pointer; font-family: inherit; font-size: 13.5px; text-align: left;
 }
-.venta-dia-head .chev { color: var(--muted); font-size: 11px; width: 9px; flex-shrink: 0; }
+.venta-dia-chev {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%;
+  background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
+}
+.venta-dia-chev svg { display: block; transition: transform .2s ease; }
+.venta-dia-head:hover .venta-dia-chev { border-color: var(--soja); color: var(--soja); }
+.venta-dia-chev.open {
+  background: rgba(163, 230, 53, 0.12); border-color: rgba(163, 230, 53, 0.4); color: var(--soja);
+}
+.venta-dia-chev.open svg { transform: rotate(90deg); }
 .venta-dia-fecha { font-weight: 600; }
 .venta-dia-tot { margin-left: auto; color: var(--text2); font-size: 12.5px; white-space: nowrap; }
 .venta-dia-tot b.soja { color: var(--soja); font-weight: 700; }

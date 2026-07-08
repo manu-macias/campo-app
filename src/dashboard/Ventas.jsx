@@ -133,8 +133,13 @@ export default function Ventas({ grupo, campania, socios, ventas, precios, onCam
         ) : (
           porFecha.map((d) => (
             <div className="venta-dia" key={d.fecha}>
-              <button className="venta-dia-head" onClick={() => toggleDia(d.fecha)}>
-                <span className="chev">{abierto[d.fecha] ? '▾' : '▸'}</span>
+              <button className="venta-dia-head" onClick={() => toggleDia(d.fecha)} aria-expanded={!!abierto[d.fecha]}>
+                <span className={'venta-dia-chev' + (abierto[d.fecha] ? ' open' : '')} aria-hidden="true">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 6 15 12 9 18" />
+                  </svg>
+                </span>
                 <span className="venta-dia-fecha">Venta del {fmtFecha(d.fecha)}</span>
                 <span className="venta-dia-tot">{FTN(d.tn)} tn · <b className="soja">${FMT(d.importe)}</b></span>
               </button>
