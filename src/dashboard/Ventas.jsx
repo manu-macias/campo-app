@@ -8,10 +8,25 @@ export default function Ventas({ grupo, campania, socios, ventas, precios, onCam
   // saltear los días sin soja. Si no hay ninguna pizarra, no se puede facturar.
   const precioHoy = ultimoPrecio(precios).soja
   const [form, setForm] = useState({
-    socioId: '', fecha: new Date().toISOString().slice(0, 10), tn: '',
+    socioId: '', fecha: new Date().toISOString().slice(0, 10), tn: '', pesos: '',
   })
   const [guardando, setGuardando] = useState(false)
   const [msg, setMsg] = useState(null)
+
+  // Calculadora bidireccional: tn y pesos son espejo uno del otro al precio de
+  // soja del día. Se edita uno y el otro se recalcula; se deja tal cual el campo
+  // que el usuario está tipeando (para no romper "1.5" o "0."). tn manda al
+  // registrar; los pesos son derivados. Sin precio, no se calcula nada.
+  const onTn = (raw) => {
+    const n = parseFloat(raw)
+    const pesos = precioHoy && raw !== '' && !isNaN(n) ? String(Math.round(n * precioHoy)) : ''
+    setForm(f => ({ ...f, tn: raw, pesos }))
+  }
+  const onPesos = (raw) => {
+    const n = parseFloat(raw)
+    const tn = precioHoy && raw !== '' && !isNaN(n) ? String(Math.round((n / precioHoy) * 100) / 100) : ''
+    setForm(f => ({ ...f, pesos: raw, tn }))
+  }
 
   const fact = useMemo(() => calcFacturacion(ventas), [ventas])
   const totalTn = useMemo(() => ventas.reduce((a, v) => a + Number(v.toneladas), 0), [ventas])
@@ -47,7 +62,7 @@ export default function Ventas({ grupo, campania, socios, ventas, precios, onCam
         fecha: form.fecha, toneladas: form.tn, precioSoja: precioHoy,
       })
       setMsg({ ok: true, txt: 'Venta registrada.' })
-      setForm(f => ({ ...f, tn: '' }))
+      setForm(f => ({ ...f, tn: '', pesos: '' }))
       await onCambio()
     } catch (e) {
       setMsg({ ok: false, txt: e.message || 'No se pudo registrar.' })
@@ -66,11 +81,17 @@ export default function Ventas({ grupo, campania, socios, ventas, precios, onCam
             {socios.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
           </select>
           <input type="date" value={form.fecha} onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} />
-          <input type="number" min="0" step="0.5" placeholder="Toneladas"
-            value={form.tn} onChange={e => setForm(f => ({ ...f, tn: e.target.value }))} />
-          <div className="venta-precio" title="Precio oficial del día — no editable">
-            {precioHoy ? '$' + FMT(precioHoy) + ' /tn' : 'Sin precio del día'}
-          </div>
+          <input type="number" min="0" step="0.5" placeholder="Toneladas" inputMode="decimal"
+            value={form.tn} onChange={e => onTn(e.target.value)} />
+          <input type="number" min="0" step="1000" placeholder="Pesos a liquidar" inputMode="numeric"
+            value={form.pesos} onChange={e => onPesos(e.target.value)} />
+        </div>
+        <div className="venta-rate">
+          {precioHoy ? (
+            <>Cotización de hoy <b>${FMT(precioHoy)}/tn</b>{form.tn && form.pesos
+              ? <> · {form.tn} tn = <b className="soja">${FMT(form.pesos)}</b></>
+              : ' · tipeá toneladas o pesos y se calcula solo'}</>
+          ) : 'Sin precio del día — no se puede registrar la venta'}
         </div>
         <button className="btn primary" disabled={guardando} onClick={guardar}>
           {guardando ? 'Guardando…' : 'Registrar venta'}
