@@ -2,6 +2,10 @@ import { useMemo, useState } from 'react'
 import { registrarVenta } from '../lib/db.js'
 import { calcFacturacion, FMT, ultimoPrecio } from '../lib/scoring.js'
 
+// Toneladas con hasta 2 decimales (FMT redondea a entero: sirve solo para $).
+const FTN = (n) => Number(n).toLocaleString('es-AR', { maximumFractionDigits: 2 })
+const fmtFecha = (f) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}`
+
 export default function Ventas({ grupo, campania, socios, ventas, precios, onCambio }) {
   // El precio de la venta es SIEMPRE la última pizarra oficial de soja: no se
   // puede tipear ni ajustar a mano. Se usa ultimoPrecio (no la última fila) para
@@ -12,6 +16,8 @@ export default function Ventas({ grupo, campania, socios, ventas, precios, onCam
   })
   const [guardando, setGuardando] = useState(false)
   const [msg, setMsg] = useState(null)
+  const [abierto, setAbierto] = useState({}) // qué fechas del historial están expandidas
+  const toggleDia = (f) => setAbierto(a => ({ ...a, [f]: !a[f] }))
 
   // Calculadora bidireccional: tn y pesos son espejo uno del otro al precio de
   // soja del día. Se edita uno y el otro se recalcula; se deja tal cual el campo
@@ -31,7 +37,27 @@ export default function Ventas({ grupo, campania, socios, ventas, precios, onCam
   const fact = useMemo(() => calcFacturacion(ventas), [ventas])
   const totalTn = useMemo(() => ventas.reduce((a, v) => a + Number(v.toneladas), 0), [ventas])
 
-  // Agregado por socio.
+  // Historial agrupado por fecha: cada fecha es "una venta" con varios socios.
+  // Si un socio vendió dos veces el mismo día, se suma en una sola línea.
+  const porFecha = useMemo(() => {
+    const dias = {}
+    for (const v of ventas) {
+      const f = v.fecha
+      const imp = Number(v.importe) || Number(v.toneladas) * Number(v.precio_soja)
+      if (!dias[f]) dias[f] = { fecha: f, tn: 0, importe: 0, socios: {} }
+      dias[f].tn += Number(v.toneladas)
+      dias[f].importe += imp
+      const nombre = v.socios?.nombre || '—'
+      if (!dias[f].socios[nombre]) dias[f].socios[nombre] = { nombre, tn: 0, importe: 0 }
+      dias[f].socios[nombre].tn += Number(v.toneladas)
+      dias[f].socios[nombre].importe += imp
+    }
+    return Object.values(dias)
+      .map(d => ({ ...d, socios: Object.values(d.socios) }))
+      .sort((a, b) => (a.fecha < b.fecha ? 1 : -1)) // más nueva primero
+  }, [ventas])
+
+  // Resumen por socio (total de toda la campaña).
   const porSocio = useMemo(() => {
     const m = {}
     for (const v of ventas) {
@@ -101,26 +127,58 @@ export default function Ventas({ grupo, campania, socios, ventas, precios, onCam
 
       <div className="card" style={{ marginTop: 12 }}>
         <div className="card-title">{campania.nombre} · contrato {FMT(campania.toneladas_totales)} tn</div>
-        {porSocio.length === 0 ? (
+
+        {porFecha.length === 0 ? (
           <div className="muted" style={{ fontSize: 13.5, padding: '8px 0' }}>Todavía no hay ventas registradas.</div>
         ) : (
-          <table className="tabla">
-            <thead>
-              <tr><th style={{ textAlign: 'left' }}>Socio</th><th>Vendido</th><th>Facturado</th></tr>
-            </thead>
-            <tbody>
-              {porSocio.map((r, i) => (
-                <tr key={i}>
-                  <td style={{ textAlign: 'left' }}>{r.nombre}</td>
-                  <td>{r.tn} tn</td>
-                  <td className="soja">${FMT(r.importe)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          porFecha.map((d) => (
+            <div className="venta-dia" key={d.fecha}>
+              <button className="venta-dia-head" onClick={() => toggleDia(d.fecha)}>
+                <span className="chev">{abierto[d.fecha] ? '▾' : '▸'}</span>
+                <span className="venta-dia-fecha">Venta del {fmtFecha(d.fecha)}</span>
+                <span className="venta-dia-tot">{FTN(d.tn)} tn · <b className="soja">${FMT(d.importe)}</b></span>
+              </button>
+              {abierto[d.fecha] && (
+                <div className="venta-dia-body">
+                  <table className="tabla">
+                    <tbody>
+                      {d.socios.map((s, i) => (
+                        <tr key={i}>
+                          <td style={{ textAlign: 'left' }}>{s.nombre}</td>
+                          <td>{FTN(s.tn)} tn</td>
+                          <td className="soja">${FMT(s.importe)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ))
         )}
+
+        {porSocio.length > 0 && (
+          <>
+            <div className="sec-label" style={{ marginTop: 18 }}>Resumen por socio</div>
+            <table className="tabla">
+              <thead>
+                <tr><th style={{ textAlign: 'left' }}>Socio</th><th>Vendido</th><th>Facturado</th></tr>
+              </thead>
+              <tbody>
+                {porSocio.map((r, i) => (
+                  <tr key={i}>
+                    <td style={{ textAlign: 'left' }}>{r.nombre}</td>
+                    <td>{FTN(r.tn)} tn</td>
+                    <td className="soja">${FMT(r.importe)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+
         <div className="resumen">
-          <span>Total vendido: <b>{totalTn} tn</b></span>
+          <span>Total vendido: <b>{FTN(totalTn)} tn</b></span>
           <span>Facturado total: <b className="soja">${FMT(fact.total)}</b></span>
           {fact.ultimo && <span>Último mes ({fact.ultimo.mes}): <b className="soja">${FMT(fact.ultimo.importe)}</b></span>}
         </div>

@@ -162,6 +162,21 @@ input:focus { border-color: var(--soja); }
 .venta-rate b { color: var(--text2); font-weight: 600; }
 .venta-rate b.soja { color: var(--soja); font-weight: 700; }
 
+/* Historial de ventas agrupado por fecha (colapsable) */
+.venta-dia { border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; overflow: hidden; }
+.venta-dia-head {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  background: var(--surface2); border: none; color: var(--text);
+  padding: 11px 13px; cursor: pointer; font-family: inherit; font-size: 13.5px; text-align: left;
+}
+.venta-dia-head .chev { color: var(--muted); font-size: 11px; width: 9px; flex-shrink: 0; }
+.venta-dia-fecha { font-weight: 600; }
+.venta-dia-tot { margin-left: auto; color: var(--text2); font-size: 12.5px; white-space: nowrap; }
+.venta-dia-tot b.soja { color: var(--soja); font-weight: 700; }
+.venta-dia-body { padding: 2px 12px 6px; }
+.venta-dia-body .tabla td { font-size: 13px; }
+.venta-dia-body .tabla tr:last-child td { border-bottom: none; }
+
 .tabla { width: 100%; border-collapse: collapse; }
 .tabla th { font-size: 11px; color: var(--muted); font-weight: 600; padding: 8px; text-align: right; border-bottom: 1px solid var(--border); }
 .tabla td { padding: 9px 8px; color: var(--text2); border-bottom: 1px solid var(--surface2); text-align: right; font-size: 13.5px; }
