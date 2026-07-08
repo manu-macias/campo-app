@@ -1,25 +1,26 @@
 import { useMemo, useState } from 'react'
-import { calcScore, veredicto } from '../lib/scoring.js'
+import { calcScore, veredicto, ultimoPrecio } from '../lib/scoring.js'
 import { SecLabel, Slider, PriceCard } from './controls.jsx'
 
 const COLOR = { green: 'var(--soja)', red: 'var(--danger)', blue: '#60a5fa', yellow: 'var(--dolar)', gray: 'var(--muted)' }
 
 export default function Decision({ precios }) {
-  const ultimo = precios.length ? precios[precios.length - 1] : null
+  // Último precio real de cada serie (saltea las filas cola con soja/dólar null).
+  const ult = useMemo(() => ultimoPrecio(precios), [precios])
 
   // Promedio de referencia: últimos 90 días de la serie (si hay datos).
   const prom = useMemo(() => {
     const rec = precios.slice(-90)
     const avg = (k) => {
-      const xs = rec.map(p => p[k]).filter(Boolean)
+      const xs = rec.map(p => p[k]).filter(x => x != null)
       return xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0
     }
     return { soja: avg('soja'), dolar: avg('dolar') }
   }, [precios])
 
   const [v, setV] = useState({
-    soja_hoy: ultimo?.soja || 0,
-    dolar_hoy: ultimo?.dolar || 0,
+    soja_hoy: ult.soja || 0,
+    dolar_hoy: ult.dolar || 0,
     soja_prom: prom.soja,
     dolar_prom: prom.dolar,
     stock_d: 3, stock_s: 3, urgencia: 3, expect_s: 3,
@@ -32,7 +33,7 @@ export default function Decision({ precios }) {
 
   return (
     <div>
-      <SecLabel>Precios de hoy{ultimo?.fecha ? ' · actualizado ' + ultimo.fecha.slice(8, 10) + '/' + ultimo.fecha.slice(5, 7) : ''}</SecLabel>
+      <SecLabel>Precios de hoy{ult.fechaSoja ? ' · actualizado ' + ult.fechaSoja.slice(8, 10) + '/' + ult.fechaSoja.slice(5, 7) : ''}</SecLabel>
       <div className="grid2">
         <PriceCard label="Soja BCR Rosario" value={v.soja_hoy} unit="$/tn" accent="var(--soja)" />
         <PriceCard label="Dólar oficial" value={v.dolar_hoy} unit="$/USD" accent="var(--dolar)" />

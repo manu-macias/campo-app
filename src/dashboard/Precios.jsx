@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import Chart from 'chart.js/auto'
-import { FMT } from '../lib/scoring.js'
+import { FMT, ultimoPrecio } from '../lib/scoring.js'
 
 export default function Precios({ precios }) {
   const ref = useRef(null)
@@ -64,7 +64,7 @@ export default function Precios({ precios }) {
     )
   }
 
-  const ult = precios[precios.length - 1]
+  const ult = ultimoPrecio(precios)
   return (
     <div>
       <div className="card">
@@ -72,8 +72,8 @@ export default function Precios({ precios }) {
         <canvas ref={ref} style={{ maxHeight: 260 }} />
       </div>
       <div className="resumen" style={{ marginTop: 12 }}>
-        <span>Soja hoy: <b className="soja">${FMT(ult.soja)}</b></span>
-        <span>Dólar hoy: <b className="dolar">${FMT(ult.dolar)}</b></span>
+        <span>Soja hoy: <b className="soja">{ult.soja != null ? '$' + FMT(ult.soja) : '—'}</b></span>
+        <span>Dólar hoy: <b className="dolar">{ult.dolar != null ? '$' + FMT(ult.dolar) : '—'}</b></span>
       </div>
     </div>
   )

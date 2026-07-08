@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
 import { registrarVenta } from '../lib/db.js'
-import { calcFacturacion, FMT } from '../lib/scoring.js'
+import { calcFacturacion, FMT, ultimoPrecio } from '../lib/scoring.js'
 
 export default function Ventas({ grupo, campania, socios, ventas, precios, onCambio }) {
-  // El precio de la venta es SIEMPRE la pizarra oficial del día (último dato de
-  // la serie): no se puede tipear ni ajustar a mano. Si no hay precio cargado,
-  // no se puede facturar la venta.
-  const precioHoy = precios.length ? precios[precios.length - 1].soja : null
+  // El precio de la venta es SIEMPRE la última pizarra oficial de soja: no se
+  // puede tipear ni ajustar a mano. Se usa ultimoPrecio (no la última fila) para
+  // saltear los días sin soja. Si no hay ninguna pizarra, no se puede facturar.
+  const precioHoy = ultimoPrecio(precios).soja
   const [form, setForm] = useState({
     socioId: '', fecha: new Date().toISOString().slice(0, 10), tn: '',
   })

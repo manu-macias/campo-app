@@ -5,6 +5,23 @@
 export const FMT = (n) => Math.round(Number(n) || 0).toLocaleString('es-AR')
 export const PCT = (x) => (x >= 0 ? '+' : '') + (x * 100).toFixed(1) + '%'
 
+// Último precio CONOCIDO de cada serie. La serie de dólar tiene fechas más
+// nuevas que la de soja (dólar corre todos los días, incluidos fines de semana;
+// la pizarra de soja solo días hábiles y con rezago), así que la última fila por
+// fecha suele tener dólar y soja en null. Por eso NO se usa precios[último]:
+// se escanea desde el final y se toma, por separado, el último valor no nulo de
+// cada serie. Corta apenas tiene ambos. Con serie vacía devuelve todo null.
+export function ultimoPrecio(precios) {
+  let soja = null, dolar = null, fechaSoja = null, fechaDolar = null
+  for (let i = precios.length - 1; i >= 0; i--) {
+    const p = precios[i]
+    if (soja == null && p.soja != null) { soja = Number(p.soja); fechaSoja = p.fecha }
+    if (dolar == null && p.dolar != null) { dolar = Number(p.dolar); fechaDolar = p.fecha }
+    if (soja != null && dolar != null) break
+  }
+  return { soja, dolar, fechaSoja, fechaDolar }
+}
+
 export function calcScore(v) {
   const { soja_hoy, dolar_hoy, soja_prom, dolar_prom, stock_d, stock_s, urgencia, expect_s } = v
   if (!soja_hoy || !dolar_hoy || !soja_prom || !dolar_prom) {
