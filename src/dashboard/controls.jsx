@@ -29,3 +29,18 @@ export function NumInput({ label, value, onChange, unit, step = 1000, accent }) 
     </div>
   )
 }
+
+const FMT_AR = (n) => (n == null || isNaN(n) || n === 0)
+  ? '—'
+  : '$' + Number(n).toLocaleString('es-AR', { maximumFractionDigits: 0 })
+
+// Precio de mercado en modo SOLO LECTURA: dato oficial, no editable.
+export function PriceCard({ label, value, unit, accent, sub = 'dato oficial' }) {
+  return (
+    <div className="ctrl">
+      <div className="ctrl-label">{label}</div>
+      <div className="num" style={accent ? { color: accent } : undefined}>{FMT_AR(value)}</div>
+      <div className="hint hint-lock"><span aria-hidden="true">🔒</span> {unit} · {sub}</div>
+    </div>
+  )
+}

@@ -3,9 +3,12 @@ import { registrarVenta } from '../lib/db.js'
 import { calcFacturacion, FMT } from '../lib/scoring.js'
 
 export default function Ventas({ grupo, campania, socios, ventas, precios, onCambio }) {
-  const precioHoy = precios.length ? precios[precios.length - 1].soja : ''
+  // El precio de la venta es SIEMPRE la pizarra oficial del día (último dato de
+  // la serie): no se puede tipear ni ajustar a mano. Si no hay precio cargado,
+  // no se puede facturar la venta.
+  const precioHoy = precios.length ? precios[precios.length - 1].soja : null
   const [form, setForm] = useState({
-    socioId: '', fecha: new Date().toISOString().slice(0, 10), tn: '', precio: precioHoy,
+    socioId: '', fecha: new Date().toISOString().slice(0, 10), tn: '',
   })
   const [guardando, setGuardando] = useState(false)
   const [msg, setMsg] = useState(null)
@@ -31,14 +34,17 @@ export default function Ventas({ grupo, campania, socios, ventas, precios, onCam
   }
 
   const guardar = async () => {
-    if (!form.socioId || !(Number(form.tn) > 0) || !(Number(form.precio) >= 0)) {
-      setMsg({ ok: false, txt: 'Completá socio, toneladas (> 0) y precio.' }); return
+    if (!form.socioId || !(Number(form.tn) > 0)) {
+      setMsg({ ok: false, txt: 'Completá socio y toneladas (> 0).' }); return
+    }
+    if (!(Number(precioHoy) > 0)) {
+      setMsg({ ok: false, txt: 'No hay precio de soja cargado; no se puede facturar la venta.' }); return
     }
     setGuardando(true); setMsg(null)
     try {
       await registrarVenta({
         grupoId: grupo.id, campaniaId: campania.id, socioId: form.socioId,
-        fecha: form.fecha, toneladas: form.tn, precioSoja: form.precio,
+        fecha: form.fecha, toneladas: form.tn, precioSoja: precioHoy,
       })
       setMsg({ ok: true, txt: 'Venta registrada.' })
       setForm(f => ({ ...f, tn: '' }))
@@ -62,8 +68,10 @@ export default function Ventas({ grupo, campania, socios, ventas, precios, onCam
           <input type="date" value={form.fecha} onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} />
           <input type="number" min="0" step="0.5" placeholder="Toneladas"
             value={form.tn} onChange={e => setForm(f => ({ ...f, tn: e.target.value }))} />
-          <input type="number" min="0" step="1000" placeholder="Precio $/tn"
-            value={form.precio} onChange={e => setForm(f => ({ ...f, precio: e.target.value }))} />
+          <div className="venta-precio" title="Precio oficial del día — no editable">
+            <span className="lock" aria-hidden="true">🔒</span>
+            {precioHoy ? '$' + FMT(precioHoy) + ' /tn' : 'Sin precio del día'}
+          </div>
         </div>
         <button className="btn primary" disabled={guardando} onClick={guardar}>
           {guardando ? 'Guardando…' : 'Registrar venta'}

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { calcScore, veredicto } from '../lib/scoring.js'
-import { SecLabel, Slider, NumInput } from './controls.jsx'
+import { SecLabel, Slider, PriceCard } from './controls.jsx'
 
 const COLOR = { green: 'var(--soja)', red: 'var(--danger)', blue: '#60a5fa', yellow: 'var(--dolar)', gray: 'var(--muted)' }
 
@@ -32,16 +32,16 @@ export default function Decision({ precios }) {
 
   return (
     <div>
-      <SecLabel>Precios de hoy</SecLabel>
+      <SecLabel>Precios de hoy{ultimo?.fecha ? ' · actualizado ' + ultimo.fecha.slice(8, 10) + '/' + ultimo.fecha.slice(5, 7) : ''}</SecLabel>
       <div className="grid2">
-        <NumInput label="Soja BCR Rosario" value={v.soja_hoy} onChange={set('soja_hoy')} unit="$/tn" step={1000} accent="var(--soja)" />
-        <NumInput label="Dólar oficial" value={v.dolar_hoy} onChange={set('dolar_hoy')} unit="$/USD" step={10} accent="var(--dolar)" />
+        <PriceCard label="Soja BCR Rosario" value={v.soja_hoy} unit="$/tn" accent="var(--soja)" />
+        <PriceCard label="Dólar oficial" value={v.dolar_hoy} unit="$/USD" accent="var(--dolar)" />
       </div>
 
       <SecLabel>Promedios de referencia (últimos 90 días)</SecLabel>
       <div className="grid2">
-        <NumInput label="Soja promedio" value={v.soja_prom} onChange={set('soja_prom')} unit="$/tn" step={1000} />
-        <NumInput label="Dólar promedio" value={v.dolar_prom} onChange={set('dolar_prom')} unit="$/USD" step={10} />
+        <PriceCard label="Soja promedio" value={v.soja_prom} unit="$/tn" sub="calculado" />
+        <PriceCard label="Dólar promedio" value={v.dolar_prom} unit="$/USD" sub="calculado" />
       </div>
 
       <div className={'verdict v-' + ver.cls}>
