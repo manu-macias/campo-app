@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getMiembros, getInvitacionesPendientes, crearInvitacion, agregarSocio, unirseConCodigo } from '../lib/db.js'
+import { getMiembros, getInvitacionesPendientes, crearInvitacion, agregarSocio, unirseConCodigo, desvincularSocio } from '../lib/db.js'
 
 // Pantalla "Socios": el reparto del grupo con el estado de conexión de cada
 // socio (cuenta conectada / invitación enviada / sin cuenta). El admin genera
@@ -12,6 +12,7 @@ export default function Socios({ grupo, socios, usuarioId, onCambio }) {
   const [error, setError] = useState(null)
   const [nuevo, setNuevo] = useState(null)       // { nombre, tn } — form "agregar socio"
   const [codigo, setCodigo] = useState(null)     // string — form "unirme a otro grupo"
+  const [confirmDesv, setConfirmDesv] = useState(null) // socio_id a confirmar desvinculación
   const [guardando, setGuardando] = useState(false)
 
   const cargar = async () => {
@@ -78,6 +79,21 @@ export default function Socios({ grupo, socios, usuarioId, onCambio }) {
     }
   }
 
+  // Desvincula un socio: acceso cortado + fuera del reparto (sus ventas quedan
+  // y su cuenta personal no se toca). Confirmación en dos pasos.
+  const desvincular = async (socio) => {
+    setGuardando(true); setError(null)
+    try {
+      await desvincularSocio(socio.id)
+      setConfirmDesv(null)
+      await Promise.all([cargar(), onCambio?.()])
+    } catch (e) {
+      setError(e.message || 'No se pudo desvincular.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
   // Canjea un código estando YA logueado (usuario con cuenta/grupo previo):
   // lo suma al grupo nuevo y recarga la app apuntando a ese grupo.
   const canjearCodigo = async () => {
@@ -120,6 +136,9 @@ export default function Socios({ grupo, socios, usuarioId, onCambio }) {
           const estado = estadoDe(s)
           const inv = invitacionDe(s)
           const chip = CHIP[estado]
+          // Un socio vinculado a un admin no se puede desvincular (se quedaría
+          // afuera de su propio grupo). El backend también lo rechaza.
+          const esDeAdmin = miembros.some(m => m.socio_id === s.id && m.rol === 'admin')
           return (
             <div key={s.id}>
               <div className="socio-item">
@@ -143,11 +162,30 @@ export default function Socios({ grupo, socios, usuarioId, onCambio }) {
                     Compartir
                   </button>
                 )}
+                {soyAdmin && !esDeAdmin && (
+                  <button className="btn-x" aria-label={'Desvincular a ' + s.nombre}
+                    onClick={() => { setConfirmDesv(confirmDesv === s.id ? null : s.id); setError(null) }}>
+                    ✕
+                  </button>
+                )}
               </div>
               {soyAdmin && estado === 'pendiente' && (
                 <div className="codigo-box">
                   Código: <b>{inv.codigo}</b> · vence el{' '}
                   {new Date(inv.expira_at).toLocaleDateString('es-AR')}
+                </div>
+              )}
+              {confirmDesv === s.id && (
+                <div className="confirm-box">
+                  <span style={{ flex: 1 }}>
+                    {s.nombre} sale del reparto y se le corta el acceso al grupo.
+                    Sus ventas quedan en el historial y su cuenta personal no se borra.
+                  </span>
+                  <button className="btn-chico" onClick={() => setConfirmDesv(null)}>Cancelar</button>
+                  <button className="btn-chico rojo" disabled={guardando}
+                    onClick={() => desvincular(s)}>
+                    {guardando ? 'Quitando…' : 'Desvincular'}
+                  </button>
                 </div>
               )}
             </div>

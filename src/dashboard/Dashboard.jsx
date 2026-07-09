@@ -15,6 +15,7 @@ export default function Dashboard({ perfil }) {
   const [cargando, setCargando] = useState(true)
 
   const cargar = async () => {
+    if (!grupo) return
     const campania = await getCampaniaActiva(grupo.id)
     const [socios, precios] = await Promise.all([getSocios(grupo.id), getPrecios()])
     const ventas = campania ? await getVentas(campania.id) : []
@@ -22,6 +23,30 @@ export default function Dashboard({ perfil }) {
     setCargando(false)
   }
   useEffect(() => { cargar() }, [])
+
+  // El perfil apunta a un grupo que ya no puede ver (lo desvincularon o el
+  // grupo se borró): se le suelta el puntero y vuelve al onboarding, donde
+  // puede crear su grupo o unirse a otro con un código.
+  const empezarDeNuevo = async () => {
+    await supabase.from('perfiles').update({ grupo_id: null }).eq('id', perfil.id)
+    window.location.reload()
+  }
+  if (!grupo) {
+    return (
+      <div className="centro">
+        <div className="card">
+          <h2>Sin acceso al grupo</h2>
+          <p className="muted" style={{ fontSize: 14.5, lineHeight: 1.6 }}>
+            Ya no formás parte de este grupo (te desvincularon o fue eliminado).
+            Tus datos personales están intactos: podés crear tu propio grupo o
+            unirte a otro con un código de invitación.
+          </p>
+          <button className="btn primary" onClick={empezarDeNuevo}>Continuar</button>
+          <button className="btn ghost" onClick={() => supabase.auth.signOut()}>Salir</button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="app">

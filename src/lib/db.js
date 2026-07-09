@@ -77,7 +77,10 @@ export async function getCampaniaActiva(grupoId) {
 export async function getSocios(grupoId) {
   const { data } = await supabase
     .from('socios').select('*').eq('grupo_id', grupoId).order('created_at')
-  return data || []
+  // Los socios desvinculados quedan archivados (activo=false): no aparecen en
+  // las listas pero sus ventas históricas conservan el nombre. Se filtra acá
+  // (y no en la query) para funcionar aunque la columna aún no exista.
+  return (data || []).filter(s => s.activo !== false)
 }
 
 export async function getVentas(campaniaId) {
@@ -125,6 +128,13 @@ export async function agregarSocio({ grupoId, nombre, tn }) {
     participacion_tipo: 'tn',
     participacion_valor: Number(tn) || 0,
   })
+  if (error) throw error
+}
+
+// Desvincula un socio: le corta el acceso y lo saca del reparto (borra o
+// archiva según tenga ventas). El perfil de la persona NO se toca.
+export async function desvincularSocio(socioId) {
+  const { error } = await supabase.rpc('desvincular_socio', { s: socioId })
   if (error) throw error
 }
 
