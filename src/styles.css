@@ -184,9 +184,17 @@ input:focus { border-color: var(--soja); }
 .venta-dia-fecha { font-weight: 600; }
 .venta-dia-tot { margin-left: auto; color: var(--text2); font-size: 12.5px; white-space: nowrap; }
 .venta-dia-tot b.soja { color: var(--soja); font-weight: 700; }
-.venta-dia-body { padding: 2px 12px 6px; }
+.venta-dia-body { padding: 2px 12px 10px; }
 .venta-dia-body .tabla td { font-size: 13px; }
 .venta-dia-body .tabla tr:last-child td { border-bottom: none; }
+.venta-ticket-btn {
+  width: 100%; margin-top: 8px; padding: 10px; border-radius: var(--radius-sm);
+  background: transparent; border: 1px solid var(--border); color: var(--soja);
+  font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  transition: background .15s ease, border-color .15s ease;
+}
+.venta-ticket-btn:hover { border-color: var(--soja); background: rgba(163, 230, 53, 0.08); }
 
 .tabla { width: 100%; border-collapse: collapse; }
 .tabla th { font-size: 11px; color: var(--muted); font-weight: 600; padding: 8px; text-align: right; border-bottom: 1px solid var(--border); }

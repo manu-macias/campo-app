@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { registrarVenta } from '../lib/db.js'
 import { calcFacturacion, FMT, ultimoPrecio } from '../lib/scoring.js'
+import { compartirTicketReparto } from '../lib/ticket.js'
 
 // Toneladas con hasta 2 decimales (FMT redondea a entero: sirve solo para $).
 const FTN = (n) => Number(n).toLocaleString('es-AR', { maximumFractionDigits: 2 })
@@ -156,6 +157,17 @@ export default function Ventas({ grupo, campania, socios, ventas, precios, onCam
                       ))}
                     </tbody>
                   </table>
+                  <button className="venta-ticket-btn" onClick={() => compartirTicketReparto({
+                    fecha: d.fecha, filas: d.socios, totalTn: d.tn, totalImporte: d.importe,
+                    precio: d.tn ? Math.round(d.importe / d.tn) : 0,
+                  }).catch(() => {})}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
+                      <polyline points="8 7 12 3 16 7" /><line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    Compartir ticket de reparto
+                  </button>
                 </div>
               )}
             </div>
