@@ -46,7 +46,7 @@ export default function Dashboard({ perfil }) {
       ) : tab === 2 ? (
         <Precios precios={data.precios} />
       ) : (
-        <Socios grupo={grupo} socios={data.socios} usuarioId={perfil.id} />
+        <Socios grupo={grupo} socios={data.socios} usuarioId={perfil.id} onCambio={cargar} />
       )}
     </div>
   )

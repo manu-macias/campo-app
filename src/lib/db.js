@@ -117,6 +117,17 @@ export async function getInvitacionesPendientes(grupoId) {
   return data || []
 }
 
+// Agrega un socio al reparto (solo admin por RLS).
+export async function agregarSocio({ grupoId, nombre, tn }) {
+  const { error } = await supabase.from('socios').insert({
+    grupo_id: grupoId,
+    nombre: nombre.trim(),
+    participacion_tipo: 'tn',
+    participacion_valor: Number(tn) || 0,
+  })
+  if (error) throw error
+}
+
 // Genera un código de invitación para un socio del reparto (solo admin).
 export async function crearInvitacion(grupoId, socioId = null) {
   const { data, error } = await supabase
