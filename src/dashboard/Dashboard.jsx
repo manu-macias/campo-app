@@ -4,8 +4,9 @@ import { getCampaniaActiva, getSocios, getVentas, getPrecios } from '../lib/db.j
 import Decision from './Decision.jsx'
 import Ventas from './Ventas.jsx'
 import Precios from './Precios.jsx'
+import Socios from './Socios.jsx'
 
-const TABS = ['Decisión', 'Ventas', 'Precios']
+const TABS = ['Decisión', 'Ventas', 'Precios', 'Socios']
 
 export default function Dashboard({ perfil }) {
   const grupo = perfil.grupos
@@ -42,8 +43,10 @@ export default function Dashboard({ perfil }) {
       ) : tab === 1 ? (
         <Ventas grupo={grupo} campania={data.campania} socios={data.socios}
           ventas={data.ventas} precios={data.precios} onCambio={cargar} />
-      ) : (
+      ) : tab === 2 ? (
         <Precios precios={data.precios} />
+      ) : (
+        <Socios grupo={grupo} socios={data.socios} usuarioId={perfil.id} />
       )}
     </div>
   )

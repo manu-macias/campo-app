@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { completarOnboarding } from '../lib/db.js'
+import { completarOnboarding, unirseConCodigo } from '../lib/db.js'
 
 const TOTAL_PASOS = 5
 
 export default function Onboarding({ usuario, onListo }) {
+  const [modo, setModo] = useState(null) // null = elegir | 'crear' | 'codigo'
   const [paso, setPaso] = useState(0)
   const [nombreUsuario, setNombreUsuario] = useState(usuario?.user_metadata?.full_name || '')
   const [nombreGrupo, setNombreGrupo] = useState('')
@@ -12,6 +13,7 @@ export default function Onboarding({ usuario, onListo }) {
   const [campania, setCampania] = useState({
     nombre: '', anioInicio: new Date().getFullYear(), toneladas: '',
   })
+  const [codigo, setCodigo] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState(null)
 
@@ -32,6 +34,69 @@ export default function Onboarding({ usuario, onListo }) {
       setError(e.message || 'No se pudo guardar.')
       setGuardando(false)
     }
+  }
+
+  const unirme = async () => {
+    setGuardando(true); setError(null)
+    try {
+      await unirseConCodigo({ codigo, nombreUsuario })
+      onListo()
+    } catch (e) {
+      setError(e.message || 'No se pudo validar el código.')
+      setGuardando(false)
+    }
+  }
+
+  // ── Pantalla inicial: crear un grupo nuevo o unirse con un código ──
+  if (modo === null) {
+    return (
+      <div className="centro">
+        <div className="card">
+          <h2>¡Bienvenido! 👋</h2>
+          <p className="muted" style={{ fontSize: 14.5, lineHeight: 1.6 }}>
+            ¿Arrancás un grupo nuevo o un socio ya te invitó al suyo?
+          </p>
+          <button className="btn primary" onClick={() => setModo('crear')}>
+            Crear mi grupo
+          </button>
+          <button className="btn ghost" onClick={() => { setModo('codigo'); setError(null) }}>
+            Tengo un código de invitación
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Unirse a un grupo existente con el código recibido ──
+  if (modo === 'codigo') {
+    return (
+      <div className="centro">
+        <div className="card">
+          <h2>Unirme a un grupo</h2>
+          <p className="muted" style={{ fontSize: 14.5, lineHeight: 1.6 }}>
+            Pegá el código que te mandó el administrador del grupo.
+          </p>
+          <div className="field" style={{ marginTop: 14 }}>
+            <label>¿Cómo te llamás?</label>
+            <input type="text" value={nombreUsuario}
+              onChange={e => setNombreUsuario(e.target.value)} placeholder="Tu nombre" />
+          </div>
+          <div className="field">
+            <label>Código de invitación</label>
+            <input type="text" className="codigo-input" value={codigo} maxLength={12}
+              autoCapitalize="characters" autoCorrect="off" spellCheck={false}
+              onChange={e => setCodigo(e.target.value.toUpperCase())} placeholder="Ej. K7PMQ2XW" />
+          </div>
+          <div className="row">
+            <button className="btn ghost" onClick={() => setModo(null)}>Atrás</button>
+            <button className="btn primary"
+              disabled={guardando || !nombreUsuario.trim() || codigo.trim().length < 6}
+              onClick={unirme}>{guardando ? 'Verificando…' : 'Unirme al grupo'}</button>
+          </div>
+          {error && <div className="error">{error}</div>}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -55,8 +120,11 @@ export default function Onboarding({ usuario, onListo }) {
               <input type="text" value={nombreUsuario}
                 onChange={e => setNombreUsuario(e.target.value)} placeholder="Tu nombre" />
             </div>
-            <button className="btn primary" disabled={!nombreUsuario.trim()}
-              onClick={() => setPaso(1)}>Empezar</button>
+            <div className="row">
+              <button className="btn ghost" onClick={() => setModo(null)}>Atrás</button>
+              <button className="btn primary" disabled={!nombreUsuario.trim()}
+                onClick={() => setPaso(1)}>Empezar</button>
+            </div>
           </>
         )}
 

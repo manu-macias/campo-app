@@ -196,6 +196,35 @@ input:focus { border-color: var(--soja); }
 }
 .venta-ticket-btn:hover { border-color: var(--soja); background: rgba(163, 230, 53, 0.08); }
 
+/* Pantalla Socios: reparto con estado de conexión e invitaciones */
+.socio-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 0; border-bottom: 1px solid var(--surface2);
+}
+.socio-item .nombre { font-weight: 600; font-size: 14.5px; }
+.socio-item .part { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.chip {
+  margin-left: auto; flex-shrink: 0; font-size: 11px; font-weight: 700;
+  padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+}
+.chip.conectado { color: var(--soja); background: rgba(163,230,53,0.12); border: 1px solid rgba(163,230,53,0.35); }
+.chip.pendiente { color: var(--dolar); background: rgba(245,166,35,0.10); border: 1px solid rgba(245,166,35,0.35); }
+.chip.sin { color: var(--muted); background: var(--surface2); border: 1px solid var(--border); }
+.btn-chico {
+  flex-shrink: 0; padding: 7px 12px; border-radius: 9px; border: 1px solid var(--border);
+  background: transparent; color: var(--text2); font-size: 12.5px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.btn-chico:hover { border-color: var(--soja); color: var(--soja); }
+.btn-chico.lima { background: var(--soja); border-color: var(--soja); color: #11210a; }
+.codigo-box {
+  margin: -4px 0 8px; padding: 9px 12px; border-radius: var(--radius-sm);
+  background: var(--bg); border: 1px dashed var(--border);
+  font-size: 12.5px; color: var(--text2);
+}
+.codigo-box b { color: var(--soja); letter-spacing: 0.08em; font-size: 14px; }
+.codigo-input { text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; }
+
 .tabla { width: 100%; border-collapse: collapse; }
 .tabla th { font-size: 11px; color: var(--muted); font-weight: 600; padding: 8px; text-align: right; border-bottom: 1px solid var(--border); }
 .tabla td { padding: 9px 8px; color: var(--text2); border-bottom: 1px solid var(--surface2); text-align: right; font-size: 13.5px; }

@@ -95,6 +95,51 @@ export async function getPrecios() {
   return data || []
 }
 
+// ── Grupos compartidos (Fase 5) ───────────────────────────────
+// Requiere haber corrido supabase/miembros.sql (tabla miembros + RPCs).
+
+// Miembros del grupo (quién tiene cuenta conectada y con qué rol).
+// Lanza el error si la tabla no existe todavía (migración sin aplicar).
+export async function getMiembros(grupoId) {
+  const { data, error } = await supabase
+    .from('miembros').select('*').eq('grupo_id', grupoId)
+  if (error) throw error
+  return data || []
+}
+
+// Invitaciones vigentes (solo el admin las ve por RLS; para socios da []).
+export async function getInvitacionesPendientes(grupoId) {
+  const { data } = await supabase
+    .from('invitaciones').select('*')
+    .eq('grupo_id', grupoId)
+    .is('usada_at', null)
+    .gt('expira_at', new Date().toISOString())
+  return data || []
+}
+
+// Genera un código de invitación para un socio del reparto (solo admin).
+export async function crearInvitacion(grupoId, socioId = null) {
+  const { data, error } = await supabase
+    .rpc('crear_invitacion', { g: grupoId, s: socioId })
+  if (error) throw error
+  return data // el código
+}
+
+// Canjea un código de invitación y deja el perfil apuntando al grupo.
+export async function unirseConCodigo({ codigo, nombreUsuario }) {
+  const { data, error } = await supabase
+    .rpc('unirse_con_codigo', { c: codigo.trim() })
+  if (error) throw error
+  if (nombreUsuario?.trim()) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase.from('perfiles')
+        .update({ nombre: nombreUsuario.trim() }).eq('id', user.id)
+    }
+  }
+  return data // grupo_id
+}
+
 export async function registrarVenta({ grupoId, campaniaId, socioId, fecha, toneladas, precioSoja }) {
   const { error } = await supabase.from('ventas').insert({
     grupo_id: grupoId,
