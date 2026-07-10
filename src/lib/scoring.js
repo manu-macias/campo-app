@@ -5,6 +5,27 @@
 export const FMT = (n) => Math.round(Number(n) || 0).toLocaleString('es-AR')
 export const PCT = (x) => (x >= 0 ? '+' : '') + (x * 100).toFixed(1) + '%'
 
+// Granos soportados. El `id` es también el nombre de la columna en `precios` y
+// el valor guardado en ventas.grano.
+export const GRANOS = [
+  { id: 'soja', label: 'Soja' },
+  { id: 'trigo', label: 'Trigo' },
+  { id: 'maiz', label: 'Maíz' },
+  { id: 'girasol', label: 'Girasol' },
+  { id: 'sorgo', label: 'Sorgo' },
+]
+export const labelGrano = (id) => (GRANOS.find(g => g.id === id) || {}).label || id
+
+// Último valor NO nulo de una columna de la serie (grano o 'dolar'), buscando
+// desde el final. La serie de dólar/algunos granos tiene fechas más nuevas sin
+// otras, así que nunca se toma precios[último] a secas.
+export function ultimoPrecioDe(precios, campo) {
+  for (let i = precios.length - 1; i >= 0; i--) {
+    if (precios[i][campo] != null) return { precio: Number(precios[i][campo]), fecha: precios[i].fecha }
+  }
+  return { precio: null, fecha: null }
+}
+
 // Último precio CONOCIDO de cada serie. La serie de dólar tiene fechas más
 // nuevas que la de soja (dólar corre todos los días, incluidos fines de semana;
 // la pizarra de soja solo días hábiles y con rezago), así que la última fila por

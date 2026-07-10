@@ -35,7 +35,9 @@ BCR_LOGIN   = "https://api.bcr.com.ar/gix/v1.0/Login"
 BCR_PRECIOS = "https://api.bcr.com.ar/gix/v1.0/PreciosCamara"
 BCR_API_KEY = "A6D9A60F-2A13-F111-9448-00155D09E215"
 BCR_SECRET  = "6cbaeddacc47754da031c0f1cac97074429285a1ad30c16767b710521fd4d144"
-ID_SOJA     = 21
+# idGrano de cada pizarra en la API de la Cámara Arbitral (BCR). El nombre de
+# la izquierda es también el nombre de la columna en la tabla `precios`.
+GRANOS_BCR = { "soja": 21, "trigo": 1, "maiz": 2, "girasol": 20, "sorgo": 3 }
 
 # Anclas históricas de soja (pizarra Rosario $/tn) para que la serie no
 # arranque vacía si la API de BCR falla. Solo se usan como fallback.
@@ -93,9 +95,9 @@ def bcr_login():
     return d["data"]["token"]  # "Bearer eyJ..."
 
 
-def bcr_soja_semana(token, desde, hasta):
-    """Pizarra de soja para un rango de ≤ 7 días → {fecha: precio_int}."""
-    url = (f"{BCR_PRECIOS}?idGrano={ID_SOJA}"
+def bcr_grano_semana(token, id_grano, desde, hasta):
+    """Pizarra de un grano para un rango de ≤ 7 días → {fecha: precio_int}."""
+    url = (f"{BCR_PRECIOS}?idGrano={id_grano}"
            f"&fechaConcertacionDesde={desde}&fechaConcertacionHasta={hasta}&page=1")
     req = urllib.request.Request(url, headers={"accept": "*/*", "Authorization": token})
     d = json.loads(urllib.request.urlopen(req, timeout=30).read().decode("utf-8"))
@@ -108,18 +110,17 @@ def bcr_soja_semana(token, desde, hasta):
     return out
 
 
-def soja_backfill_bcr(dias):
-    """Serie DIARIA de soja pizarra (BCR), iterando de a 1 semana (límite de la API)."""
-    token = bcr_login()
+def grano_backfill_bcr(token, id_grano, dias):
+    """Serie DIARIA de un grano (BCR), iterando de a 1 semana (límite de la API)."""
     out = {}
     hoy = datetime.date.today()
     cur = hoy - datetime.timedelta(days=dias)
     while cur <= hoy:
         fin = min(cur + datetime.timedelta(days=6), hoy)
         try:
-            out.update(bcr_soja_semana(token, cur.isoformat(), fin.isoformat()))
+            out.update(bcr_grano_semana(token, id_grano, cur.isoformat(), fin.isoformat()))
         except Exception as e:
-            print(f"  ✗ soja semana {cur}: {e}")
+            print(f"  ✗ semana {cur}: {e}")
         cur = fin + datetime.timedelta(days=1)
     return out
 
@@ -138,11 +139,12 @@ def sb_headers(extra=None):
 
 
 def sb_get_existing(cutoff):
-    """Filas ya guardadas desde `cutoff` → {fecha: {"soja":.., "dolar":..}}."""
+    """Filas ya guardadas desde `cutoff` → {fecha: {grano: precio, "dolar":..}}."""
+    cols = "fecha,dolar," + ",".join(GRANOS_BCR)
     url = (f"{SUPABASE_URL}/rest/v1/precios"
-           f"?select=fecha,soja,dolar&fecha=gte.{cutoff}&order=fecha.asc")
+           f"?select={cols}&fecha=gte.{cutoff}&order=fecha.asc")
     rows = json.loads(fetch(url, headers=sb_headers()))
-    return {r["fecha"]: {"soja": r.get("soja"), "dolar": r.get("dolar")} for r in rows}
+    return {r["fecha"]: r for r in rows}
 
 
 def sb_upsert(rows, chunk=200):
@@ -160,7 +162,6 @@ def main():
 
     cutoff = (datetime.date.today() - datetime.timedelta(days=DAYS)).isoformat()
     existing = sb_get_existing(cutoff)
-    soja_points = sum(1 for p in existing.values() if p.get("soja"))
 
     # to_write: solo las fechas/campos que este run efectivamente calculó
     # (no reescribimos toda la historia — merge-duplicates preserva el resto).
@@ -181,17 +182,20 @@ def main():
     except Exception as e:
         print(f"✗ backfill dólar: {e}")
 
-    # Serie diaria de soja (BCR). Si hay pocos puntos, backfill completo;
-    # si ya está densa, solo refrescamos las últimas 2 semanas.
+    # Serie diaria de cada grano (BCR). Por grano: si hay pocos puntos, backfill
+    # completo; si ya está denso, solo las últimas 2 semanas.
     try:
-        dias = DAYS if soja_points < 60 else 14
-        soja_serie = soja_backfill_bcr(dias)
-        for fecha, val in soja_serie.items():
-            put(fecha, soja=val)
-        print(f"✓ soja BCR API: {len(soja_serie)} días (backfill {dias}d)")
+        token = bcr_login()
+        for grano, id_grano in GRANOS_BCR.items():
+            pts = sum(1 for p in existing.values() if p.get(grano) is not None)
+            dias = DAYS if pts < 60 else 14
+            serie = grano_backfill_bcr(token, id_grano, dias)
+            for fecha, val in serie.items():
+                put(fecha, **{grano: val})
+            print(f"✓ {grano} BCR API: {len(serie)} días (backfill {dias}d)")
     except Exception as e:
-        print(f"✗ soja BCR API: {e}")
-        # Fallback: anclas mensuales + scrape del HTML para hoy.
+        print(f"✗ BCR API: {e}")
+        # Fallback mínimo: anclas mensuales de soja + scrape de soja de hoy.
         for fecha, val in SOJA_SEED.items():
             put(fecha, soja=val)
         try:
@@ -214,19 +218,19 @@ def main():
     items = sorted(to_write.items())
 
     # PostgREST exige que todos los objetos de un mismo POST tengan las MISMAS
-    # claves. Además, con merge-duplicates cada columna enviada se sobreescribe,
-    # así que no podemos mandar soja=null en un día que ya tiene soja. Por eso
-    # separamos en dos upserts de claves uniformes (soja y dólar); los días con
-    # ambos van en los dos y se mergean sin pisarse.
-    soja_rows  = [{"fecha": f, "updated_at": now, "soja":  v["soja"]}
-                  for f, v in items if v.get("soja")  is not None]
-    dolar_rows = [{"fecha": f, "updated_at": now, "dolar": v["dolar"]}
-                  for f, v in items if v.get("dolar") is not None]
-
-    if soja_rows:  sb_upsert(soja_rows)
-    if dolar_rows: sb_upsert(dolar_rows)
-
-    print(f"→ upsert precios: soja {len(soja_rows)} filas, dólar {len(dolar_rows)} filas")
+    # claves, y con merge-duplicates cada columna enviada pisa la anterior (no
+    # podemos mandar null sobre un valor ya cargado). Por eso hacemos un upsert
+    # por columna (cada grano y el dólar), con claves uniformes; los días con
+    # varios valores van en varios upserts y se mergean sin pisarse.
+    total = 0
+    for col in list(GRANOS_BCR) + ["dolar"]:
+        rows = [{"fecha": f, "updated_at": now, col: v[col]}
+                for f, v in items if v.get(col) is not None]
+        if rows:
+            sb_upsert(rows)
+            print(f"  · {col}: {len(rows)} filas")
+            total += len(rows)
+    print(f"→ upsert precios: {total} filas en total")
 
 
 if __name__ == "__main__":

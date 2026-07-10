@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { completarOnboarding, unirseConCodigo } from '../lib/db.js'
+import { GRANOS } from '../lib/scoring.js'
 
 const TOTAL_PASOS = 5
 
@@ -13,6 +14,9 @@ export default function Onboarding({ usuario, onListo }) {
   const [campania, setCampania] = useState({
     nombre: '', anioInicio: new Date().getFullYear(), toneladas: '',
   })
+  const [granos, setGranos] = useState(['soja'])
+  const toggleGrano = (id) => setGranos(gs =>
+    gs.includes(id) ? gs.filter(g => g !== id) : [...gs, id])
   const [codigo, setCodigo] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState(null)
@@ -28,7 +32,7 @@ export default function Onboarding({ usuario, onListo }) {
   const finalizar = async () => {
     setGuardando(true); setError(null)
     try {
-      await completarOnboarding({ nombreUsuario, nombreGrupo, socios, campania })
+      await completarOnboarding({ nombreUsuario, nombreGrupo, socios, campania, granos })
       onListo()
     } catch (e) {
       setError(e.message || 'No se pudo guardar.')
@@ -199,6 +203,16 @@ export default function Onboarding({ usuario, onListo }) {
                 onChange={e => setCampania(c => ({ ...c, nombre: e.target.value }))}
                 placeholder="Ej. 2026/2027" />
             </div>
+            <div className="field">
+              <label>¿Qué granos vas a manejar?</label>
+              <div className="grano-chips">
+                {GRANOS.map(g => (
+                  <button type="button" key={g.id}
+                    className={'grano-chip' + (granos.includes(g.id) ? ' on' : '')}
+                    onClick={() => toggleGrano(g.id)}>{g.label}</button>
+                ))}
+              </div>
+            </div>
             <div className="row" style={{ marginBottom: 14 }}>
               <div className="field" style={{ flex: 1, marginBottom: 0 }}>
                 <label>Año de inicio</label>
@@ -215,7 +229,7 @@ export default function Onboarding({ usuario, onListo }) {
             <div className="row">
               <button className="btn ghost" onClick={() => setPaso(3)}>Atrás</button>
               <button className="btn primary"
-                disabled={guardando || !campania.nombre.trim()}
+                disabled={guardando || !campania.nombre.trim() || granos.length === 0}
                 onClick={finalizar}>{guardando ? 'Guardando…' : 'Crear mi grupo'}</button>
             </div>
             {error && <div className="error">{error}</div>}

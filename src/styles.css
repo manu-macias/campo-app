@@ -224,6 +224,21 @@ input:focus { border-color: var(--soja); }
 }
 .codigo-box b { color: var(--soja); letter-spacing: 0.08em; font-size: 14px; }
 .codigo-input { text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; }
+
+/* Selector de granos (chips multi-selección / single-selección) */
+.grano-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.grano-chip {
+  padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text2); font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all .15s ease;
+}
+.grano-chip:hover { border-color: var(--soja); }
+.grano-chip.on { background: var(--soja); border-color: var(--soja); color: #11210a; }
+.grano-tag {
+  display: inline-block; margin-right: 7px; padding: 1px 8px; border-radius: 6px;
+  background: rgba(163,230,53,0.14); color: var(--soja); font-size: 11px;
+  font-weight: 700; vertical-align: 1px;
+}
 .btn-x {
   flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px;
   border: 1px solid var(--border); background: transparent; color: var(--muted);

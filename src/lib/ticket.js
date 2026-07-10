@@ -10,7 +10,7 @@ const FDATE = (f) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}`
 const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
 
 // Dibuja el ticket y devuelve una Promise<Blob> (PNG en alta resolución @2x).
-function generarTicketBlob({ fecha, filas, totalTn, totalImporte, precio }) {
+function generarTicketBlob({ fecha, grano, filas, totalTn, totalImporte, precio }) {
   const W = 900, rowH = 76, headH = 68, top = 150, totH = 82
   const H = top + headH + filas.length * rowH + 14 + totH + 36
 
@@ -28,7 +28,7 @@ function generarTicketBlob({ fecha, filas, totalTn, totalImporte, precio }) {
   x.fillStyle = gris; x.font = `400 25px ${FONT}`
   x.fillText('$' + FMT(totalImporte) + '  ·  $' + FMT(precio) + ' por tonelada', W / 2, 106)
   x.font = `400 17px ${FONT}`
-  x.fillText('Venta del ' + FDATE(fecha), W / 2, 136)
+  x.fillText((grano ? grano + ' · ' : '') + 'Venta del ' + FDATE(fecha), W / 2, 136)
 
   const L = 32, TW = W - 64
   const cx = [L + TW * 0.20, L + TW * 0.53, L + TW * 0.82]
@@ -67,7 +67,8 @@ function generarTicketBlob({ fecha, filas, totalTn, totalImporte, precio }) {
 
 export async function compartirTicketReparto(datos) {
   const blob = await generarTicketBlob(datos)
-  const file = new File([blob], `reparto-${datos.fecha}.png`, { type: 'image/png' })
+  const slug = (datos.grano ? datos.grano.toLowerCase() + '-' : '') + datos.fecha
+  const file = new File([blob], `reparto-${slug}.png`, { type: 'image/png' })
 
   // Compartir nativo (celu): abre el menú del sistema → WhatsApp, mail, etc.
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -81,7 +82,7 @@ export async function compartirTicketReparto(datos) {
   // Fallback (escritorio / sin soporte): descarga la imagen.
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url; a.download = `reparto-${datos.fecha}.png`
+  a.href = url; a.download = file.name
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 5000)
 }
