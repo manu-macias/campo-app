@@ -121,6 +121,49 @@ export async function getInvitacionesPendientes(grupoId) {
   return data || []
 }
 
+// ── Mi Perfil (Fase 7) ─────────────────────────────────────────
+
+// Actualiza el nombre del usuario logueado.
+export async function actualizarNombre(nombre) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('No hay sesión activa')
+  const { error } = await supabase.from('perfiles')
+    .update({ nombre: nombre.trim() }).eq('id', user.id)
+  if (error) throw error
+}
+
+// Todos los grupos a los que pertenece el usuario, con su rol en cada uno.
+export async function getMisGrupos() {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+  const { data } = await supabase
+    .from('miembros').select('rol, socio_id, grupos(id, nombre)')
+    .eq('user_id', user.id)
+  return (data || []).filter(m => m.grupos) // por si un grupo fue borrado
+}
+
+// Cambia el grupo "activo" (el que muestra el dashboard).
+export async function cambiarGrupoActivo(grupoId) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('No hay sesión activa')
+  const { error } = await supabase.from('perfiles')
+    .update({ grupo_id: grupoId }).eq('id', user.id)
+  if (error) throw error
+}
+
+// Sale de un grupo (con candado de único-admin en el backend).
+export async function salirDelGrupo(grupoId) {
+  const { error } = await supabase.rpc('salir_del_grupo', { g: grupoId })
+  if (error) throw error
+}
+
+// Elimina la cuenta del usuario en la app (deja todo en cero).
+export async function eliminarCuenta() {
+  const { error } = await supabase.rpc('eliminar_cuenta')
+  if (error) throw error
+  await supabase.auth.signOut()
+}
+
 // Agrega un socio al reparto (solo admin por RLS).
 export async function agregarSocio({ grupoId, nombre, tn }) {
   const { error } = await supabase.from('socios').insert({

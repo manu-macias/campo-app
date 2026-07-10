@@ -5,6 +5,7 @@ import Decision from './Decision.jsx'
 import Ventas from './Ventas.jsx'
 import Precios from './Precios.jsx'
 import Socios from './Socios.jsx'
+import Perfil from './Perfil.jsx'
 
 const TABS = ['Decisión', 'Ventas', 'Precios', 'Socios']
 
@@ -52,7 +53,10 @@ export default function Dashboard({ perfil }) {
     <div className="app">
       <div className="appbar">
         <div className="brand">🌱 {grupo?.nombre || 'campo-app'}</div>
-        <button className="btn ghost btn-sm" onClick={() => supabase.auth.signOut()}>Salir</button>
+        <button className={'perfil-btn' + (tab === 'perfil' ? ' on' : '')}
+          aria-label="Mi perfil" onClick={() => setTab('perfil')}>
+          {(perfil?.nombre || '?').trim().charAt(0).toUpperCase()}
+        </button>
       </div>
 
       <div className="tabs">
@@ -70,8 +74,10 @@ export default function Dashboard({ perfil }) {
           ventas={data.ventas} precios={data.precios} onCambio={cargar} />
       ) : tab === 2 ? (
         <Precios precios={data.precios} />
-      ) : (
+      ) : tab === 3 ? (
         <Socios grupo={grupo} socios={data.socios} usuarioId={perfil.id} onCambio={cargar} />
+      ) : (
+        <Perfil perfil={perfil} />
       )}
     </div>
   )

@@ -239,6 +239,41 @@ input:focus { border-color: var(--soja); }
   background: rgba(163,230,53,0.14); color: var(--soja); font-size: 11px;
   font-weight: 700; vertical-align: 1px;
 }
+
+/* Mi Perfil */
+.perfil-btn {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.perfil-btn.on { background: var(--soja); border-color: var(--soja); color: #11210a; }
+.perfil-top { display: flex; align-items: center; gap: 13px; }
+.perfil-foto {
+  width: 54px; height: 54px; border-radius: 50%; flex-shrink: 0; object-fit: cover;
+  border: 1px solid var(--border);
+}
+.perfil-inicial {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface2); color: var(--soja); font-size: 22px; font-weight: 800;
+}
+.perfil-nombre { font-size: 17px; font-weight: 700; }
+.perfil-email { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grupo-item {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 13px; margin-top: 8px; border-radius: var(--radius-sm);
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  font-size: 14.5px; font-weight: 600; cursor: pointer; font-family: inherit; text-align: left;
+}
+.grupo-item.activo { border-color: var(--soja); }
+.grupo-item:hover { border-color: var(--soja); }
+.grupo-rol { font-size: 11.5px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
+.grupo-item.activo .grupo-rol { color: var(--soja); }
+.btn-peligro {
+  width: 100%; margin-top: 10px; padding: 13px; border-radius: var(--radius-sm);
+  background: transparent; border: 1px solid rgba(248,113,113,0.4); color: var(--danger);
+  font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.btn-peligro:hover { background: rgba(248,113,113,0.08); }
 .btn-x {
   flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px;
   border: 1px solid var(--border); background: transparent; color: var(--muted);
