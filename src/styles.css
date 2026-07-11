@@ -83,6 +83,11 @@ input:focus { border-color: var(--soja); }
 .btn.ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
 .btn.google { background: #fff; color: #1f1f1f; }
 .btn.apple { background: #000; color: #fff; }
+.btn-texto {
+  display: block; width: 100%; margin-top: 14px; padding: 6px; background: none;
+  border: none; color: var(--muted); font-size: 13px; cursor: pointer; font-family: inherit;
+}
+.btn-texto:hover { color: var(--text2); text-decoration: underline; }
 
 .row { display: flex; gap: 10px; }
 .row .btn { margin-top: 0; }

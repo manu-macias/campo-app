@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { supabase } from '../supabaseClient.js'
 import { completarOnboarding, unirseConCodigo } from '../lib/db.js'
 import { GRANOS } from '../lib/scoring.js'
 
@@ -65,6 +66,9 @@ export default function Onboarding({ usuario, onListo }) {
           </button>
           <button className="btn ghost" onClick={() => { setModo('codigo'); setError(null) }}>
             Tengo un código de invitación
+          </button>
+          <button className="btn-texto" onClick={() => supabase.auth.signOut()}>
+            Cerrar sesión ({usuario?.email})
           </button>
         </div>
       </div>

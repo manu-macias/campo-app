@@ -13,7 +13,17 @@ export default function App() {
   // Escuchamos la sesión de Supabase (login / logout / refresh de token).
   useEffect(() => {
     if (!supabaseConfigurado) { setCargando(false); return }
-    supabase.auth.getSession().then(({ data }) => setSesion(data.session))
+    // getSession() lee el token guardado en el navegador SIN validarlo contra el
+    // servidor. Si el usuario fue borrado (ej. al resetear para testear), el token
+    // queda "zombie": la app te cree logueado pero cualquier escritura falla. Por
+    // eso validamos con getUser() y, si no existe, cerramos sesión → login limpio.
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session) {
+        const { data: u, error } = await supabase.auth.getUser()
+        if (error || !u?.user) { await supabase.auth.signOut(); setSesion(null); return }
+      }
+      setSesion(data.session)
+    })
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSesion(s))
     return () => sub.subscription.unsubscribe()
   }, [])
