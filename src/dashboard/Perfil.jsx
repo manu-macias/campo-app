@@ -89,10 +89,9 @@ export default function Perfil({ perfil, campania }) {
       {/* Con qué contás — stock del contrato (solo lectura) */}
       {campania && (
         <div className="card" style={{ marginTop: 12 }}>
-          <div className="card-title">Con qué contás</div>
+          <div className="card-title">Contrato{campania.nombre ? ` ${campania.nombre}` : ''}</div>
           <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, margin: '0 0 4px' }}>
-            Stock del contrato {campania.nombre ? <b>{campania.nombre}</b> : ''}. Lo define el
-            contrato, no cambia con las ventas.
+            Con qué contás. Lo define el contrato, no cambia con las ventas.
           </p>
           <div className="stock-list">
             {(campania.granos || []).map(g => (
