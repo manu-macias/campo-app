@@ -4,6 +4,10 @@ dist
 .env.local
 .DS_Store
 
+# Python (script de precios)
+__pycache__/
+*.pyc
+
 # Capacitor (Fase 4b)
 ios/App/Pods
 android/.gradle
