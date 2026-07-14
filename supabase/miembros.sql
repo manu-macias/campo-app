@@ -109,8 +109,14 @@ alter table public.invitaciones enable row level security;
 drop policy if exists grupos_select on public.grupos;
 drop policy if exists grupos_update on public.grupos;
 drop policy if exists grupos_delete on public.grupos;
+-- El `or owner_id = auth.uid()` es clave para el onboarding: al crear un grupo con
+-- `insert().select()` (return=representation), Postgres aplica esta policy sobre la
+-- fila devuelta. La membresía que haría true a soy_miembro() la crea el trigger
+-- grupo_creador_admin EN EL MISMO statement, y soy_miembro() es STABLE (no la ve),
+-- así que sin este OR el insert del grupo nuevo devuelve 42501. El dueño, además,
+-- siempre debe poder ver su grupo.
 create policy grupos_select on public.grupos
-  for select using (soy_miembro(id));
+  for select using (soy_miembro(id) or owner_id = auth.uid());
 create policy grupos_update on public.grupos
   for update using (soy_admin(id)) with check (soy_admin(id));
 create policy grupos_delete on public.grupos

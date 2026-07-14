@@ -7,7 +7,10 @@ import Precios from './Precios.jsx'
 import Socios from './Socios.jsx'
 import Perfil from './Perfil.jsx'
 
-const TABS = ['Decisión', 'Ventas', 'Precios', 'Socios']
+// El orden de este array define el orden en la barra (izq. → der.) y cuál es la
+// pestaña por defecto (índice 0). El contenido se resuelve por NOMBRE más abajo,
+// así reordenar acá alcanza para cambiar la navegación sin tocar nada más.
+const TABS = ['Ventas', 'Decisión', 'Precios', 'Socios']
 
 export default function Dashboard({ perfil }) {
   const grupo = perfil.grupos
@@ -67,18 +70,18 @@ export default function Dashboard({ perfil }) {
 
       {cargando ? (
         <div className="muted" style={{ padding: 24, textAlign: 'center' }}>Cargando…</div>
-      ) : tab === 0 ? (
-        <Decision precios={data.precios} />
-      ) : tab === 1 ? (
+      ) : tab === 'perfil' ? (
+        <Perfil perfil={perfil} />
+      ) : TABS[tab] === 'Ventas' ? (
         <Ventas grupo={grupo} campania={data.campania} socios={data.socios}
           ventas={data.ventas} precios={data.precios} onCambio={cargar} />
-      ) : tab === 2 ? (
+      ) : TABS[tab] === 'Decisión' ? (
+        <Decision precios={data.precios} />
+      ) : TABS[tab] === 'Precios' ? (
         <Precios precios={data.precios} />
-      ) : tab === 3 ? (
+      ) : TABS[tab] === 'Socios' ? (
         <Socios grupo={grupo} socios={data.socios} usuarioId={perfil.id} onCambio={cargar} />
-      ) : (
-        <Perfil perfil={perfil} />
-      )}
+      ) : null}
     </div>
   )
 }
