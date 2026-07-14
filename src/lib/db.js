@@ -16,7 +16,7 @@ export async function getPerfil() {
 
 // Crea grupo + perfil + socios + campaña, en orden. Deja al usuario listo para
 // usar la app. Si algo falla, lanza el error para mostrarlo en la UI.
-export async function completarOnboarding({ nombreUsuario, nombreGrupo, socios, campania, granos }) {
+export async function completarOnboarding({ nombreUsuario, nombreGrupo, socios, campania, granos, cantidades, dolares }) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('No hay sesión activa')
 
@@ -49,12 +49,22 @@ export async function completarOnboarding({ nombreUsuario, nombreGrupo, socios, 
   }
 
   // 4) campaña / contrato
+  // Cantidad por grano (solo los granos elegidos, en tn). El total se deriva
+  // sumando, para mantener toneladas_totales que usan otras pantallas.
+  const cant = {}
+  for (const g of (granos || [])) {
+    const v = Number(cantidades?.[g]) || 0
+    if (v > 0) cant[g] = v
+  }
+  const totalTn = Object.values(cant).reduce((a, b) => a + b, 0)
   const { error: e4 } = await supabase.from('campanias').insert({
     grupo_id: grupo.id,
     nombre: campania.nombre.trim(),
     anio_inicio: Number(campania.anioInicio),
-    toneladas_totales: Number(campania.toneladas) || 0,
+    toneladas_totales: totalTn,
     granos: (granos && granos.length) ? granos : ['soja'],
+    cantidades: cant,
+    dolares: Number(dolares) || 0,
   })
   if (e4) throw e4
 

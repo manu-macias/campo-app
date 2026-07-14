@@ -71,7 +71,7 @@ export default function Dashboard({ perfil }) {
       {cargando ? (
         <div className="muted" style={{ padding: 24, textAlign: 'center' }}>Cargando…</div>
       ) : tab === 'perfil' ? (
-        <Perfil perfil={perfil} />
+        <Perfil perfil={perfil} campania={data.campania} />
       ) : TABS[tab] === 'Ventas' ? (
         <Ventas grupo={grupo} campania={data.campania} socios={data.socios}
           ventas={data.ventas} precios={data.precios} onCambio={cargar} />

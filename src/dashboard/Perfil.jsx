@@ -4,8 +4,9 @@ import {
   actualizarNombre, getMisGrupos, cambiarGrupoActivo,
   salirDelGrupo, eliminarCuenta, unirseConCodigo,
 } from '../lib/db.js'
+import { FMT, labelGrano, emojiGrano } from '../lib/scoring.js'
 
-export default function Perfil({ perfil }) {
+export default function Perfil({ perfil, campania }) {
   const [user, setUser] = useState(null)
   const [nombre, setNombre] = useState(perfil?.nombre || '')
   const [misGrupos, setMisGrupos] = useState([])
@@ -84,6 +85,33 @@ export default function Perfil({ perfil }) {
         <button className="btn primary" disabled={guardando || !nombre.trim() || nombre === perfil?.nombre}
           onClick={guardarNombre}>Guardar nombre</button>
       </div>
+
+      {/* Con qué contás — stock del contrato (solo lectura) */}
+      {campania && (
+        <div className="card" style={{ marginTop: 12 }}>
+          <div className="card-title">Con qué contás</div>
+          <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, margin: '0 0 4px' }}>
+            Stock del contrato {campania.nombre ? <b>{campania.nombre}</b> : ''}. Lo define el
+            contrato, no cambia con las ventas.
+          </p>
+          <div className="stock-list">
+            {(campania.granos || []).map(g => (
+              <div className="stock-item" key={g}>
+                <span className="stock-ico">{emojiGrano(g)}</span>
+                <span className="stock-nombre">{labelGrano(g)}</span>
+                <span className="stock-val">{FMT(campania.cantidades?.[g] || 0)}<small>tn</small></span>
+              </div>
+            ))}
+            {Number(campania.dolares) > 0 && (
+              <div className="stock-item dolar">
+                <span className="stock-ico">💵</span>
+                <span className="stock-nombre">Dólares</span>
+                <span className="stock-val">{FMT(campania.dolares)}<small>US$</small></span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Grupo actual */}
       {grupoActual && (

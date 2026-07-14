@@ -13,9 +13,11 @@ export default function Onboarding({ usuario, onListo }) {
   const [cantSocios, setCantSocios] = useState(3)
   const [socios, setSocios] = useState([])
   const [campania, setCampania] = useState({
-    nombre: '', anioInicio: new Date().getFullYear(), toneladas: '',
+    nombre: '', anioInicio: new Date().getFullYear(), dolares: '',
   })
   const [granos, setGranos] = useState(['soja'])
+  // Cantidad (tn) por grano del contrato. Se muestra un input por grano elegido.
+  const [cantidades, setCantidades] = useState({ soja: '' })
   const toggleGrano = (id) => setGranos(gs =>
     gs.includes(id) ? gs.filter(g => g !== id) : [...gs, id])
   const [codigo, setCodigo] = useState('')
@@ -33,7 +35,7 @@ export default function Onboarding({ usuario, onListo }) {
   const finalizar = async () => {
     setGuardando(true); setError(null)
     try {
-      await completarOnboarding({ nombreUsuario, nombreGrupo, socios, campania, granos })
+      await completarOnboarding({ nombreUsuario, nombreGrupo, socios, campania, granos, cantidades, dolares: campania.dolares })
       onListo()
     } catch (e) {
       setError(e.message || 'No se pudo guardar.')
@@ -217,6 +219,24 @@ export default function Onboarding({ usuario, onListo }) {
                 ))}
               </div>
             </div>
+
+            {granos.length > 0 && (
+              <div className="field">
+                <label>¿Cuántas toneladas de cada uno? (las del contrato)</label>
+                <div className="stock-inputs">
+                  {GRANOS.filter(g => granos.includes(g.id)).map(g => (
+                    <div className="stock-input-row" key={g.id}>
+                      <span className="stock-ico">{g.emoji}</span>
+                      <span className="stock-nombre">{g.label}</span>
+                      <input type="number" min="0" value={cantidades[g.id] ?? ''}
+                        onChange={e => setCantidades(c => ({ ...c, [g.id]: e.target.value }))}
+                        placeholder="tn" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="row" style={{ marginBottom: 14 }}>
               <div className="field" style={{ flex: 1, marginBottom: 0 }}>
                 <label>Año de inicio</label>
@@ -224,10 +244,10 @@ export default function Onboarding({ usuario, onListo }) {
                   onChange={e => setCampania(c => ({ ...c, anioInicio: e.target.value }))} />
               </div>
               <div className="field" style={{ flex: 1, marginBottom: 0 }}>
-                <label>Toneladas totales</label>
-                <input type="number" min="0" value={campania.toneladas}
-                  onChange={e => setCampania(c => ({ ...c, toneladas: e.target.value }))}
-                  placeholder="Ej. 90" />
+                <label>Dólares en stock <span className="muted">(opcional)</span></label>
+                <input type="number" min="0" value={campania.dolares}
+                  onChange={e => setCampania(c => ({ ...c, dolares: e.target.value }))}
+                  placeholder="US$" />
               </div>
             </div>
             <div className="row">

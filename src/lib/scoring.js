@@ -8,13 +8,14 @@ export const PCT = (x) => (x >= 0 ? '+' : '') + (x * 100).toFixed(1) + '%'
 // Granos soportados. El `id` es también el nombre de la columna en `precios` y
 // el valor guardado en ventas.grano.
 export const GRANOS = [
-  { id: 'soja', label: 'Soja' },
-  { id: 'trigo', label: 'Trigo' },
-  { id: 'maiz', label: 'Maíz' },
-  { id: 'girasol', label: 'Girasol' },
-  { id: 'sorgo', label: 'Sorgo' },
+  { id: 'soja', label: 'Soja', emoji: '🌱' },
+  { id: 'trigo', label: 'Trigo', emoji: '🌾' },
+  { id: 'maiz', label: 'Maíz', emoji: '🌽' },
+  { id: 'girasol', label: 'Girasol', emoji: '🌻' },
+  { id: 'sorgo', label: 'Sorgo', emoji: '🟤' },
 ]
 export const labelGrano = (id) => (GRANOS.find(g => g.id === id) || {}).label || id
+export const emojiGrano = (id) => (GRANOS.find(g => g.id === id) || {}).emoji || '•'
 
 // Último valor NO nulo de una columna de la serie (grano o 'dolar'), buscando
 // desde el final. La serie de dólar/algunos granos tiene fechas más nuevas sin
