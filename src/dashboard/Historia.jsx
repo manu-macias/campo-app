@@ -1,9 +1,40 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FMT, labelGrano } from '../lib/scoring.js'
 import { compartirTicketReparto } from '../lib/ticket.js'
 
 const FTN = (n) => Number(n).toLocaleString('es-AR', { maximumFractionDigits: 2 })
 const fmtFecha = (f) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}`
+const DIA = 86400000
+
+// Barra de progreso venta → cobro. Avanza contra `now` (que refresca cada 60s
+// en el componente padre), así que el timing es preciso al minuto sin costo.
+function ProgresoCobro({ fecha, dias, now }) {
+  const inicio = new Date(fecha + 'T00:00:00').getTime()
+  const fin = inicio + dias * DIA
+  const total = fin - inicio
+  const pct = total > 0 ? Math.min(100, Math.max(0, ((now - inicio) / total) * 100)) : 100
+  const cobrado = now >= fin
+  const restMs = fin - now
+  const fechaCobro = new Date(fin)
+  const fCobro = `${String(fechaCobro.getDate()).padStart(2, '0')}/${String(fechaCobro.getMonth() + 1).padStart(2, '0')}/${fechaCobro.getFullYear()}`
+
+  let texto
+  if (cobrado) texto = 'Cobrado'
+  else if (restMs >= DIA) texto = `Faltan ${Math.ceil(restMs / DIA)} días`
+  else texto = `Falta ${Math.max(1, Math.ceil(restMs / 3600000))} h`
+
+  return (
+    <div className={'cobro' + (cobrado ? ' cobrado' : '')}>
+      <div className="cobro-bar">
+        <div className="cobro-fill" style={{ width: pct + '%' }} />
+      </div>
+      <div className="cobro-meta">
+        <span className="cobro-estado">{texto}</span>
+        <span className="cobro-fecha">{cobrado ? 'el ' : 'cobro '}{fCobro} · {dias} d</span>
+      </div>
+    </div>
+  )
+}
 
 const VISTAS = [
   { id: 'operaciones', label: 'Operaciones' },
@@ -34,6 +65,14 @@ export default function Historia({ campania, socios, ventas }) {
   const [abierto, setAbierto] = useState({}) // qué tarjetas están expandidas
   const toggle = (k) => setAbierto(a => ({ ...a, [k]: !a[k] }))
 
+  // Reloj para las barras de progreso de cobro: refresca cada 60s (barato) para
+  // que avancen solas mientras la pantalla está abierta.
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60000)
+    return () => clearInterval(id)
+  }, [])
+
   // Una operación = todas las filas que comparten operacion_id. Las ventas
   // viejas (sin id) caen por fecha+grano, que era como se agrupaban antes.
   const operaciones = useMemo(() => {
@@ -42,7 +81,7 @@ export default function Historia({ campania, socios, ventas }) {
       const grano = v.grano || 'soja'
       const key = v.operacion_id || `legacy|${v.fecha}|${grano}`
       const imp = Number(v.importe) || Number(v.toneladas) * Number(v.precio_soja)
-      if (!map[key]) map[key] = { key, fecha: v.fecha, grano, tn: 0, importe: 0, socios: {} }
+      if (!map[key]) map[key] = { key, fecha: v.fecha, grano, tn: 0, importe: 0, diasCobro: v.dias_cobro ?? null, socios: {} }
       map[key].tn += Number(v.toneladas)
       map[key].importe += imp
       const nombre = v.socios?.nombre || '—'
@@ -80,7 +119,7 @@ export default function Historia({ campania, socios, ventas }) {
       if (!m[k]) m[k] = { nombre, importe: 0, tnPorGrano: {}, ops: {} }
       m[k].importe += imp
       m[k].tnPorGrano[grano] = (m[k].tnPorGrano[grano] || 0) + Number(v.toneladas)
-      if (!m[k].ops[opKey]) m[k].ops[opKey] = { fecha: v.fecha, grano, tn: 0, importe: 0 }
+      if (!m[k].ops[opKey]) m[k].ops[opKey] = { fecha: v.fecha, grano, tn: 0, importe: 0, diasCobro: v.dias_cobro ?? null }
       m[k].ops[opKey].tn += Number(v.toneladas)
       m[k].ops[opKey].importe += imp
     }
@@ -173,6 +212,7 @@ export default function Historia({ campania, socios, ventas }) {
                     <span className="op-row2">{FTN(o.tn)} tn · <b className="soja">${FMT(o.importe)}</b></span>
                   </span>
                 </button>
+                {o.diasCobro != null && <ProgresoCobro fecha={o.fecha} dias={o.diasCobro} now={now} />}
                 {abierto[o.key] && (
                   <div className="venta-dia-body">
                     <table className="tabla">
@@ -230,6 +270,7 @@ export default function Historia({ campania, socios, ventas }) {
                             <TipoBadge tipo={o.tipo} n={o.nsoc} />
                           </div>
                           <div className="op-row2">{FTN(o.tn)} tn · <b className="soja">${FMT(o.importe)}</b></div>
+                          {o.diasCobro != null && <ProgresoCobro fecha={o.fecha} dias={o.diasCobro} now={now} />}
                         </div>
                       ))}
                     </div>

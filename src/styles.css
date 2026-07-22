@@ -160,14 +160,23 @@ input:focus { border-color: var(--soja); }
 /* Controles del formulario de venta: estilados a mano (appearance:none) para que
    se vean IGUAL en iOS/Android/web. El render nativo descentraba el select y
    centraba la fecha. Altura fija => las 3 columnas quedan perfectamente parejas. */
-.linea-campos select, .field-fecha input[type="date"], .linea-campos input[type="number"] {
+.linea-campos select, .field-fecha input[type="date"], .linea-campos input[type="number"],
+.field-cobro input[type="number"] {
   width: 100%; height: 44px; box-sizing: border-box; margin: 0;
   background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
   color: var(--text); font-size: 14px; padding: 0 12px; outline: none;
   font-family: inherit; text-align: left; color-scheme: dark;
   -webkit-appearance: none; appearance: none;
 }
-.linea-campos select:focus, .linea-campos input:focus, .field-fecha input:focus { border-color: var(--soja); }
+.linea-campos select:focus, .linea-campos input:focus,
+.field-fecha input:focus, .field-cobro input:focus { border-color: var(--soja); }
+.field-cobro input[type="number"] { -moz-appearance: textfield; }
+.field-cobro input[type="number"]::-webkit-inner-spin-button,
+.field-cobro input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+/* Fila de datos compartidos por la operación: fecha + plazo de cobro */
+.op-shared { display: grid; grid-template-columns: 1.3fr 1fr; gap: 8px; margin-bottom: 10px; }
+.field-fecha, .field-cobro { margin-bottom: 0; }
+.field-cobro label { font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
 /* Select: chevron propio a la derecha (reemplaza la flecha nativa que descentra) */
 .linea-campos select {
   padding-right: 32px;
@@ -319,6 +328,27 @@ input:focus { border-color: var(--soja); }
 }
 .tipo-badge.individual { color: var(--text2); background: var(--surface2); border: 1px solid var(--border); }
 .tipo-badge.conjunta { color: var(--dolar); background: rgba(245,166,35,0.12); border: 1px solid rgba(245,166,35,0.4); }
+
+/* Barra de progreso venta → cobro */
+.cobro { padding: 10px 13px 12px; }
+.cobro-bar {
+  height: 6px; border-radius: 999px; background: var(--surface2);
+  overflow: hidden; border: 1px solid var(--border);
+}
+.cobro-fill {
+  height: 100%; border-radius: 999px; background: var(--dolar);
+  transition: width .6s ease;
+}
+.cobro.cobrado .cobro-fill { background: var(--soja); }
+.cobro-meta {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 6px; font-size: 11.5px; color: var(--muted);
+}
+.cobro-estado { font-weight: 700; color: var(--dolar); }
+.cobro.cobrado .cobro-estado { color: var(--soja); }
+.cobro-fecha { font-variant-numeric: tabular-nums; }
+/* Dentro del detalle por socio la barra va sin padding lateral extra */
+.socio-op .cobro { padding: 8px 0 2px; }
 
 /* Estado vacío */
 .hist-empty { text-align: center; padding: 26px 12px 14px; color: var(--text2); font-size: 14px; }

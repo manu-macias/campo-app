@@ -15,6 +15,7 @@ export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
   const [modo, setModo] = useState('individual') // 'individual' | 'conjunta'
   const [fecha, setFecha] = useState(hoy())
   const [grano, setGrano] = useState(granos[0])
+  const [diasCobro, setDiasCobro] = useState('') // días desde la venta hasta el cobro
   const [lineas, setLineas] = useState([lineaVacia()])
   const [guardando, setGuardando] = useState(false)
   const [msg, setMsg] = useState(null)
@@ -87,7 +88,7 @@ export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
     try {
       await registrarOperacion({
         grupoId: grupo.id, campaniaId: campania.id,
-        fecha, precioSoja: precioHoy, grano,
+        fecha, precioSoja: precioHoy, grano, diasCobro,
         lineas: validas.map(l => ({ socioId: l.socioId, toneladas: l.tn })),
       })
       const n = validas.length
@@ -135,11 +136,22 @@ export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
           </div>
         )}
 
-        {/* Fecha (compartida por toda la operación) */}
-        <div className="field-fecha">
-          <label htmlFor="venta-fecha">Fecha de la venta</label>
-          <input id="venta-fecha" type="date" value={fecha} max={hoy()}
-            onChange={e => setFecha(e.target.value)} />
+        {/* Datos compartidos por toda la operación: fecha + plazo de cobro */}
+        <div className="op-shared">
+          <div className="field-fecha">
+            <label htmlFor="venta-fecha">Fecha de la venta</label>
+            <input id="venta-fecha" type="date" value={fecha} max={hoy()}
+              onChange={e => setFecha(e.target.value)} />
+          </div>
+          <div className="field-cobro">
+            <label htmlFor="venta-cobro">Días hasta el cobro</label>
+            <input id="venta-cobro" type="number" min="0" step="1" inputMode="numeric"
+              placeholder="Ej: 10" value={diasCobro}
+              onChange={e => setDiasCobro(e.target.value)} />
+          </div>
+        </div>
+        <div className="modo-hint" style={{ marginTop: -4 }}>
+          Desde que vendés hasta que entra la plata. Dibuja una barra de progreso en Historia.
         </div>
 
         {/* Líneas: 1 en individual, N en conjunta */}

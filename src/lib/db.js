@@ -220,8 +220,9 @@ export async function unirseConCodigo({ codigo, nombreUsuario }) {
 // venta CONJUNTA. Todas comparten fecha, grano, precio y un mismo operacion_id,
 // que es lo que después permite mostrarlas juntas y saber que fueron una única
 // venta (y no dos ventas sueltas que cayeron el mismo día).
-export async function registrarOperacion({ grupoId, campaniaId, fecha, precioSoja, grano, lineas }) {
+export async function registrarOperacion({ grupoId, campaniaId, fecha, precioSoja, grano, diasCobro, lineas }) {
   const operacionId = (crypto.randomUUID && crypto.randomUUID()) || undefined
+  const dias = (diasCobro === '' || diasCobro == null || isNaN(Number(diasCobro))) ? null : Math.round(Number(diasCobro))
   const filas = lineas
     .filter(l => l.socioId && Number(l.toneladas) > 0)
     .map(l => ({
@@ -232,6 +233,7 @@ export async function registrarOperacion({ grupoId, campaniaId, fecha, precioSoj
       toneladas: Number(l.toneladas),
       precio_soja: Number(precioSoja), // precio del grano de esta venta
       grano: grano || 'soja',
+      dias_cobro: dias, // plazo venta → cobro (null = sin declarar)
       ...(operacionId ? { operacion_id: operacionId } : {}),
     }))
   if (!filas.length) throw new Error('No hay líneas válidas para registrar.')
