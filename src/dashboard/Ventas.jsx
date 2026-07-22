@@ -7,6 +7,10 @@ const lineaVacia = () => ({ socioId: '', tn: '', pesos: '' })
 // Toneladas con hasta 2 decimales (FMT redondea a entero: sirve solo para $).
 const FTN = (n) => Number(n).toLocaleString('es-AR', { maximumFractionDigits: 2 })
 const fmtFecha = (f) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}`
+// Parsea aceptando coma decimal (es-AR): "1,5" → 1.5. Como en herramientas-campo.
+const parseNum = (s) => parseFloat(String(s).replace(',', '.'))
+// Deja solo dígitos y un separador decimal (coma o punto) mientras se tipea.
+const soloDecimal = (s) => s.replace(/[^\d.,]/g, '')
 
 export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
   // Granos del contrato (los contratos viejos, sin migrar, quedan como soja).
@@ -25,27 +29,30 @@ export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
     return <div className="card muted">No hay una campaña activa para este grupo.</div>
   }
 
-  // Cotización con la que se liquida esta venta: la pizarra del día hábil
-  // siguiente a la fecha elegida (T+1). Para una fecha pasada toma la de ese
-  // día, no la de hoy; para hoy cae en la última conocida (provisional).
+  // Cotización con la que se registra la venta: la pizarra vigente en la fecha
+  // elegida (esa fecha, o la más reciente anterior si ese día no hubo pizarra);
+  // para hoy cae en la última conocida (provisional).
   const cotiz = precioParaFecha(precios, grano, fecha)
   const precioHoy = cotiz.precio
 
   // Calculadora bidireccional tn ↔ pesos, por línea, al precio de la cotización.
+  // Las toneladas aceptan coma decimal (es-AR): se guarda lo tipeado y se parsea
+  // con parseNum al calcular.
   const setLinea = (i, patch) => setLineas(ls => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)))
   const onTn = (i, raw) => {
-    const n = parseFloat(raw)
-    const pesos = precioHoy && raw !== '' && !isNaN(n) ? String(Math.round(n * precioHoy)) : ''
-    setLinea(i, { tn: raw, pesos })
+    const tn = soloDecimal(raw)
+    const n = parseNum(tn)
+    const pesos = precioHoy && tn !== '' && !isNaN(n) ? String(Math.round(n * precioHoy)) : ''
+    setLinea(i, { tn, pesos })
   }
   const onPesos = (i, raw) => {
-    const n = parseFloat(raw)
+    const n = parseNum(raw)
     const tn = precioHoy && raw !== '' && !isNaN(n) ? String(Math.round((n / precioHoy) * 100) / 100) : ''
     setLinea(i, { pesos: raw, tn })
   }
   // Recalcula los pesos de todas las líneas con un precio nuevo (tn manda).
   const recalcPesos = (p) => setLineas(ls => ls.map(l => {
-    const n = parseFloat(l.tn)
+    const n = parseNum(l.tn)
     const pesos = p && l.tn !== '' && !isNaN(n) ? String(Math.round(n * p)) : ''
     return { ...l, pesos }
   }))
@@ -69,11 +76,11 @@ export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
   const usados = (i) => new Set(lineas.filter((_, j) => j !== i).map(l => l.socioId).filter(Boolean))
 
   // Total en vivo de la operación (suma de líneas cargadas).
-  const totTn = lineas.reduce((a, l) => a + (Number(l.tn) || 0), 0)
+  const totTn = lineas.reduce((a, l) => a + (parseNum(l.tn) || 0), 0)
   const totPesos = lineas.reduce((a, l) => a + (Number(l.pesos) || 0), 0)
 
   const guardar = async () => {
-    const validas = lineas.filter(l => l.socioId && Number(l.tn) > 0)
+    const validas = lineas.filter(l => l.socioId && parseNum(l.tn) > 0)
     if (modo === 'individual' && validas.length < 1) {
       setMsg({ ok: false, txt: 'Completá socio y toneladas (> 0).' }); return
     }
@@ -92,7 +99,7 @@ export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
       await registrarOperacion({
         grupoId: grupo.id, campaniaId: campania.id,
         fecha, precioSoja: precioHoy, grano, diasCobro,
-        lineas: validas.map(l => ({ socioId: l.socioId, toneladas: l.tn })),
+        lineas: validas.map(l => ({ socioId: l.socioId, toneladas: parseNum(l.tn) })),
       })
       const n = validas.length
       setMsg({ ok: true, txt: n > 1 ? `Venta conjunta registrada (${n} socios).` : 'Venta registrada.' })
@@ -171,7 +178,7 @@ export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
                       <option key={s.id} value={s.id} disabled={ocupados.has(s.id)}>{s.nombre}</option>
                     ))}
                   </select>
-                  <input type="number" min="0" step="0.5" placeholder="Tn" inputMode="decimal"
+                  <input type="text" placeholder="Tn" inputMode="decimal"
                     value={l.tn} onChange={e => onTn(i, e.target.value)} />
                   <input type="number" min="0" step="1000" placeholder="Pesos" inputMode="numeric"
                     value={l.pesos} onChange={e => onPesos(i, e.target.value)} />

@@ -160,7 +160,7 @@ input:focus { border-color: var(--soja); }
 /* Controles del formulario de venta: estilados a mano (appearance:none) para que
    se vean IGUAL en iOS/Android/web. El render nativo descentraba el select y
    centraba la fecha. Altura fija => las 3 columnas quedan perfectamente parejas. */
-.linea-campos select, .field-fecha input[type="date"], .linea-campos input[type="number"],
+.linea-campos select, .field-fecha input[type="date"], .linea-campos input,
 .field-cobro input[type="number"] {
   width: 100%; height: 44px; box-sizing: border-box; margin: 0;
   background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
