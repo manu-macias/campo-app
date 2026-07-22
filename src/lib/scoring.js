@@ -27,21 +27,28 @@ export function ultimoPrecioDe(precios, campo) {
   return { precio: null, fecha: null }
 }
 
-// Precio con el que se liquida una venta hecha en `fecha`: la pizarra del primer
-// día hábil POSTERIOR (T+1), igual que en herramientas-campo (vendida un jueves
-// paga la del viernes; un viernes, la del lunes). `precios` viene ordenado por
-// fecha ascendente, así que el primer valor no nulo con fecha > `fecha` es ese.
-// Si todavía no hay pizarra posterior (venta de hoy y la de mañana no salió),
-// cae en la última conocida — el "precio de hoy", marcado como provisional.
+// Precio con el que se registra una venta hecha en `fecha`: la pizarra VIGENTE
+// ese día — el último valor no nulo con fecha <= la elegida. Si ese día no hubo
+// pizarra (finde/feriado, o soja aún sin cargar), toma la más reciente anterior;
+// nunca salta hacia adelante a un precio más nuevo. Para una fecha anterior a
+// toda la serie usa la pizarra más vieja disponible. `precios` viene ascendente.
+// `provisional` = la pizarra usada es la última conocida (no hay una más nueva):
+// es el caso de una venta de HOY, donde se muestra "de hoy".
 export function precioParaFecha(precios, campo, fecha) {
-  if (fecha) {
-    for (let i = 0; i < precios.length; i++) {
-      const p = precios[i]
-      if (p.fecha > fecha && p[campo] != null) return { precio: Number(p[campo]), fecha: p.fecha, provisional: false }
+  const ult = ultimoPrecioDe(precios, campo)
+  if (!fecha) return { precio: ult.precio, fecha: ult.fecha, provisional: true }
+  // Última pizarra con fecha <= la seleccionada.
+  for (let i = precios.length - 1; i >= 0; i--) {
+    const p = precios[i]
+    if (p.fecha <= fecha && p[campo] != null) {
+      return { precio: Number(p[campo]), fecha: p.fecha, provisional: p.fecha === ult.fecha }
     }
   }
-  const ult = ultimoPrecioDe(precios, campo)
-  return { precio: ult.precio, fecha: ult.fecha, provisional: true }
+  // La fecha es anterior a toda la serie: la pizarra más vieja que haya.
+  for (let i = 0; i < precios.length; i++) {
+    if (precios[i][campo] != null) return { precio: Number(precios[i][campo]), fecha: precios[i].fecha, provisional: false }
+  }
+  return { precio: null, fecha: null, provisional: true }
 }
 
 // Último precio CONOCIDO de cada serie. La serie de dólar tiene fechas más
