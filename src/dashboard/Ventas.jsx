@@ -1,114 +1,97 @@
-import { useMemo, useState } from 'react'
-import { registrarVenta } from '../lib/db.js'
-import { calcFacturacion, FMT, ultimoPrecioDe, GRANOS, labelGrano } from '../lib/scoring.js'
-import { compartirTicketReparto } from '../lib/ticket.js'
+import { useState } from 'react'
+import { registrarOperacion } from '../lib/db.js'
+import { FMT, ultimoPrecioDe, labelGrano } from '../lib/scoring.js'
 
+const hoy = () => new Date().toISOString().slice(0, 10)
+const lineaVacia = () => ({ socioId: '', tn: '', pesos: '' })
 // Toneladas con hasta 2 decimales (FMT redondea a entero: sirve solo para $).
 const FTN = (n) => Number(n).toLocaleString('es-AR', { maximumFractionDigits: 2 })
-const fmtFecha = (f) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}`
 
-export default function Ventas({ grupo, campania, socios, ventas, precios, onCambio }) {
+export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
   // Granos del contrato (los contratos viejos, sin migrar, quedan como soja).
   const granos = (campania?.granos?.length ? campania.granos : ['soja'])
   const multi = granos.length > 1
 
-  const [form, setForm] = useState({
-    socioId: '', fecha: new Date().toISOString().slice(0, 10), tn: '', pesos: '',
-    grano: granos[0],
-  })
+  const [modo, setModo] = useState('individual') // 'individual' | 'conjunta'
+  const [fecha, setFecha] = useState(hoy())
+  const [grano, setGrano] = useState(granos[0])
+  const [lineas, setLineas] = useState([lineaVacia()])
   const [guardando, setGuardando] = useState(false)
   const [msg, setMsg] = useState(null)
-  const [abierto, setAbierto] = useState({}) // qué repartos del historial están expandidos
-  const toggleDia = (k) => setAbierto(a => ({ ...a, [k]: !a[k] }))
-
-  // Precio oficial del grano elegido (última pizarra no nula; no editable).
-  const precioHoy = ultimoPrecioDe(precios, form.grano).precio
-
-  // Calculadora bidireccional tn ↔ pesos al precio del grano elegido. Se deja
-  // tal cual el campo que se está tipeando; el otro se recalcula.
-  const onTn = (raw) => {
-    const n = parseFloat(raw)
-    const pesos = precioHoy && raw !== '' && !isNaN(n) ? String(Math.round(n * precioHoy)) : ''
-    setForm(f => ({ ...f, tn: raw, pesos }))
-  }
-  const onPesos = (raw) => {
-    const n = parseFloat(raw)
-    const tn = precioHoy && raw !== '' && !isNaN(n) ? String(Math.round((n / precioHoy) * 100) / 100) : ''
-    setForm(f => ({ ...f, pesos: raw, tn }))
-  }
-  // Al cambiar de grano, recalcula los pesos con el precio del nuevo grano.
-  const onGrano = (grano) => {
-    const p = ultimoPrecioDe(precios, grano).precio
-    setForm(f => {
-      const n = parseFloat(f.tn)
-      const pesos = p && f.tn !== '' && !isNaN(n) ? String(Math.round(n * p)) : ''
-      return { ...f, grano, pesos }
-    })
-  }
-
-  const fact = useMemo(() => calcFacturacion(ventas), [ventas])
-
-  // Toneladas vendidas por grano (para el total, que no se puede mezclar).
-  const tnPorGrano = useMemo(() => {
-    const m = {}
-    for (const v of ventas) m[v.grano || 'soja'] = (m[v.grano || 'soja'] || 0) + Number(v.toneladas)
-    return m
-  }, [ventas])
-
-  // Historial: cada "reparto" es una fecha + un grano (así el total en tn tiene
-  // sentido y el ticket es de un solo grano). Los socios se agrupan adentro.
-  const repartos = useMemo(() => {
-    const map = {}
-    for (const v of ventas) {
-      const grano = v.grano || 'soja'
-      const key = v.fecha + '|' + grano
-      const imp = Number(v.importe) || Number(v.toneladas) * Number(v.precio_soja)
-      if (!map[key]) map[key] = { key, fecha: v.fecha, grano, tn: 0, importe: 0, socios: {} }
-      map[key].tn += Number(v.toneladas)
-      map[key].importe += imp
-      const nombre = v.socios?.nombre || '—'
-      if (!map[key].socios[nombre]) map[key].socios[nombre] = { nombre, tn: 0, importe: 0 }
-      map[key].socios[nombre].tn += Number(v.toneladas)
-      map[key].socios[nombre].importe += imp
-    }
-    return Object.values(map)
-      .map(d => ({ ...d, socios: Object.values(d.socios) }))
-      .sort((a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : a.grano.localeCompare(b.grano)))
-  }, [ventas])
-
-  // Resumen por socio: importe total ($, se puede sumar) + toneladas por grano.
-  const porSocio = useMemo(() => {
-    const m = {}
-    for (const v of ventas) {
-      const k = v.socio_id
-      const nombre = v.socios?.nombre || '—'
-      const grano = v.grano || 'soja'
-      if (!m[k]) m[k] = { nombre, importe: 0, tnPorGrano: {} }
-      m[k].importe += Number(v.importe) || Number(v.toneladas) * Number(v.precio_soja)
-      m[k].tnPorGrano[grano] = (m[k].tnPorGrano[grano] || 0) + Number(v.toneladas)
-    }
-    return Object.values(m)
-  }, [ventas])
 
   if (!campania) {
     return <div className="card muted">No hay una campaña activa para este grupo.</div>
   }
 
+  // Precio oficial del grano elegido (última pizarra no nula; no editable).
+  const precioHoy = ultimoPrecioDe(precios, grano).precio
+
+  // Calculadora bidireccional tn ↔ pesos, por línea, al precio del grano elegido.
+  const setLinea = (i, patch) => setLineas(ls => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)))
+  const onTn = (i, raw) => {
+    const n = parseFloat(raw)
+    const pesos = precioHoy && raw !== '' && !isNaN(n) ? String(Math.round(n * precioHoy)) : ''
+    setLinea(i, { tn: raw, pesos })
+  }
+  const onPesos = (i, raw) => {
+    const n = parseFloat(raw)
+    const tn = precioHoy && raw !== '' && !isNaN(n) ? String(Math.round((n / precioHoy) * 100) / 100) : ''
+    setLinea(i, { pesos: raw, tn })
+  }
+  // Al cambiar de grano, recalcula los pesos de todas las líneas con el precio nuevo.
+  const onGrano = (g) => {
+    const p = ultimoPrecioDe(precios, g).precio
+    setGrano(g)
+    setLineas(ls => ls.map(l => {
+      const n = parseFloat(l.tn)
+      const pesos = p && l.tn !== '' && !isNaN(n) ? String(Math.round(n * p)) : ''
+      return { ...l, pesos }
+    }))
+  }
+
+  // Cambio de modo: individual = 1 línea; conjunta = arranca en 2.
+  const cambiarModo = (m) => {
+    setModo(m)
+    setMsg(null)
+    setLineas(ls => {
+      if (m === 'individual') return [ls[0] || lineaVacia()]
+      return ls.length >= 2 ? ls : [...ls, ...Array(2 - ls.length).fill(0).map(lineaVacia)]
+    })
+  }
+  const agregarLinea = () => setLineas(ls => [...ls, lineaVacia()])
+  const quitarLinea = (i) => setLineas(ls => (ls.length <= 2 ? ls : ls.filter((_, j) => j !== i)))
+
+  // Socios ya elegidos en otras líneas (para no repetir a alguien en una conjunta).
+  const usados = (i) => new Set(lineas.filter((_, j) => j !== i).map(l => l.socioId).filter(Boolean))
+
+  // Total en vivo de la operación (suma de líneas cargadas).
+  const totTn = lineas.reduce((a, l) => a + (Number(l.tn) || 0), 0)
+  const totPesos = lineas.reduce((a, l) => a + (Number(l.pesos) || 0), 0)
+
   const guardar = async () => {
-    if (!form.socioId || !(Number(form.tn) > 0)) {
+    const validas = lineas.filter(l => l.socioId && Number(l.tn) > 0)
+    if (modo === 'individual' && validas.length < 1) {
       setMsg({ ok: false, txt: 'Completá socio y toneladas (> 0).' }); return
     }
+    if (modo === 'conjunta' && validas.length < 2) {
+      setMsg({ ok: false, txt: 'Una venta conjunta necesita al menos 2 socios con toneladas.' }); return
+    }
+    const ids = validas.map(l => l.socioId)
+    if (new Set(ids).size !== ids.length) {
+      setMsg({ ok: false, txt: 'Hay un socio repetido en la venta conjunta.' }); return
+    }
     if (!(Number(precioHoy) > 0)) {
-      setMsg({ ok: false, txt: `No hay precio de ${labelGrano(form.grano)} cargado; no se puede facturar.` }); return
+      setMsg({ ok: false, txt: `No hay precio de ${labelGrano(grano)} cargado; no se puede facturar.` }); return
     }
     setGuardando(true); setMsg(null)
     try {
-      await registrarVenta({
-        grupoId: grupo.id, campaniaId: campania.id, socioId: form.socioId,
-        fecha: form.fecha, toneladas: form.tn, precioSoja: precioHoy, grano: form.grano,
+      await registrarOperacion({
+        grupoId: grupo.id, campaniaId: campania.id,
+        fecha, precioSoja: precioHoy, grano, lineas: validas,
       })
-      setMsg({ ok: true, txt: 'Venta registrada.' })
-      setForm(f => ({ ...f, tn: '', pesos: '' }))
+      const n = validas.length
+      setMsg({ ok: true, txt: n > 1 ? `Venta conjunta registrada (${n} socios).` : 'Venta registrada.' })
+      setLineas(modo === 'conjunta' ? [lineaVacia(), lineaVacia()] : [lineaVacia()])
       await onCambio()
     } catch (e) {
       setMsg({ ok: false, txt: e.message || 'No se pudo registrar.' })
@@ -117,130 +100,96 @@ export default function Ventas({ grupo, campania, socios, ventas, precios, onCam
     }
   }
 
-  // Texto de toneladas por grano: "3 Soja · 2 Trigo" (o "3 tn" si es un solo grano).
-  const tnGranoTexto = (mapa) => Object.entries(mapa)
-    .map(([g, tn]) => multi ? `${FTN(tn)} ${labelGrano(g)}` : `${FTN(tn)} tn`)
-    .join(' · ') || '—'
-
   return (
     <div>
       <div className="card">
         <div className="card-title">Registrar venta</div>
 
+        {/* Tipo de venta: individual (un socio) o conjunta (varios reparten) */}
+        <div className="modo-seg" role="tablist" aria-label="Tipo de venta">
+          <button type="button" role="tab" aria-selected={modo === 'individual'}
+            className={'modo-seg-btn' + (modo === 'individual' ? ' on' : '')}
+            onClick={() => cambiarModo('individual')}>
+            <span className="modo-seg-ico" aria-hidden="true">👤</span> Individual
+          </button>
+          <button type="button" role="tab" aria-selected={modo === 'conjunta'}
+            className={'modo-seg-btn' + (modo === 'conjunta' ? ' on' : '')}
+            onClick={() => cambiarModo('conjunta')}>
+            <span className="modo-seg-ico" aria-hidden="true">👥</span> Conjunta
+          </button>
+        </div>
+        <div className="modo-hint">
+          {modo === 'individual'
+            ? 'La venta la hace un solo socio.'
+            : 'Una misma venta repartida entre varios socios (cada uno con sus toneladas).'}
+        </div>
+
         {multi && (
           <div className="grano-chips" style={{ marginBottom: 10 }}>
             {granos.map(id => (
               <button type="button" key={id}
-                className={'grano-chip' + (form.grano === id ? ' on' : '')}
+                className={'grano-chip' + (grano === id ? ' on' : '')}
                 onClick={() => onGrano(id)}>{labelGrano(id)}</button>
             ))}
           </div>
         )}
 
-        <div className="venta-form">
-          <select value={form.socioId} onChange={e => setForm(f => ({ ...f, socioId: e.target.value }))}>
-            <option value="">Socio</option>
-            {socios.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-          </select>
-          <input type="date" value={form.fecha} onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} />
-          <input type="number" min="0" step="0.5" placeholder="Toneladas" inputMode="decimal"
-            value={form.tn} onChange={e => onTn(e.target.value)} />
-          <input type="number" min="0" step="1000" placeholder="Pesos a liquidar" inputMode="numeric"
-            value={form.pesos} onChange={e => onPesos(e.target.value)} />
+        {/* Fecha (compartida por toda la operación) */}
+        <div className="field-fecha">
+          <label htmlFor="venta-fecha">Fecha de la venta</label>
+          <input id="venta-fecha" type="date" value={fecha} max={hoy()}
+            onChange={e => setFecha(e.target.value)} />
         </div>
+
+        {/* Líneas: 1 en individual, N en conjunta */}
+        <div className="lineas">
+          {lineas.map((l, i) => {
+            const ocupados = usados(i)
+            return (
+              <div className="linea" key={i}>
+                {modo === 'conjunta' && <span className="linea-idx">{i + 1}</span>}
+                <div className="linea-campos">
+                  <select value={l.socioId} onChange={e => setLinea(i, { socioId: e.target.value })}>
+                    <option value="">Socio</option>
+                    {socios.map(s => (
+                      <option key={s.id} value={s.id} disabled={ocupados.has(s.id)}>{s.nombre}</option>
+                    ))}
+                  </select>
+                  <input type="number" min="0" step="0.5" placeholder="Tn" inputMode="decimal"
+                    value={l.tn} onChange={e => onTn(i, e.target.value)} />
+                  <input type="number" min="0" step="1000" placeholder="Pesos" inputMode="numeric"
+                    value={l.pesos} onChange={e => onPesos(i, e.target.value)} />
+                </div>
+                {modo === 'conjunta' && (
+                  <button type="button" className="linea-x" aria-label="quitar socio"
+                    disabled={lineas.length <= 2} onClick={() => quitarLinea(i)}>×</button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {modo === 'conjunta' && (
+          <button type="button" className="linea-add" onClick={agregarLinea}>+ Agregar socio</button>
+        )}
+
         <div className="venta-rate">
           {precioHoy ? (
-            <>Cotización {multi ? labelGrano(form.grano) + ' ' : ''}de hoy <b>${FMT(precioHoy)}/tn</b>{form.tn && form.pesos
-              ? <> · {form.tn} tn = <b className="soja">${FMT(form.pesos)}</b></>
-              : ' · tipeá toneladas o pesos y se calcula solo'}</>
-          ) : `Sin precio de ${labelGrano(form.grano)} — no se puede registrar la venta`}
+            <>Cotización {multi ? labelGrano(grano) + ' ' : ''}de hoy <b>${FMT(precioHoy)}/tn</b>
+              {totTn > 0
+                ? <> · {modo === 'conjunta' ? 'total ' : ''}{FTN(totTn)} tn = <b className="soja">${FMT(totPesos)}</b></>
+                : ' · tipeá toneladas o pesos y se calcula solo'}</>
+          ) : `Sin precio de ${labelGrano(grano)} — no se puede registrar la venta`}
         </div>
+
         <button className="btn primary" disabled={guardando} onClick={guardar}>
-          {guardando ? 'Guardando…' : 'Registrar venta'}
+          {guardando ? 'Guardando…' : (modo === 'conjunta' ? 'Registrar venta conjunta' : 'Registrar venta')}
         </button>
         {msg && <div className={msg.ok ? 'ok' : 'error'}>{msg.txt}</div>}
       </div>
 
-      <div className="card" style={{ marginTop: 12 }}>
-        <div className="card-title">
-          {campania.nombre}
-          {multi ? ' · ' + granos.map(labelGrano).join(', ') : ' · contrato ' + FMT(campania.toneladas_totales) + ' tn'}
-        </div>
-
-        {repartos.length === 0 ? (
-          <div className="muted" style={{ fontSize: 13.5, padding: '8px 0' }}>Todavía no hay ventas registradas.</div>
-        ) : (
-          repartos.map((d) => (
-            <div className="venta-dia" key={d.key}>
-              <button className="venta-dia-head" onClick={() => toggleDia(d.key)} aria-expanded={!!abierto[d.key]}>
-                <span className={'venta-dia-chev' + (abierto[d.key] ? ' open' : '')} aria-hidden="true">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="9 6 15 12 9 18" />
-                  </svg>
-                </span>
-                <span className="venta-dia-fecha">
-                  {multi && <span className="grano-tag">{labelGrano(d.grano)}</span>}
-                  Venta del {fmtFecha(d.fecha)}
-                </span>
-                <span className="venta-dia-tot">{FTN(d.tn)} tn · <b className="soja">${FMT(d.importe)}</b></span>
-              </button>
-              {abierto[d.key] && (
-                <div className="venta-dia-body">
-                  <table className="tabla">
-                    <tbody>
-                      {d.socios.map((s, i) => (
-                        <tr key={i}>
-                          <td style={{ textAlign: 'left' }}>{s.nombre}</td>
-                          <td>{FTN(s.tn)} tn</td>
-                          <td className="soja">${FMT(s.importe)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <button className="venta-ticket-btn" onClick={() => compartirTicketReparto({
-                    fecha: d.fecha, grano: labelGrano(d.grano), filas: d.socios,
-                    totalTn: d.tn, totalImporte: d.importe,
-                    precio: d.tn ? Math.round(d.importe / d.tn) : 0,
-                  }).catch(() => {})}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                      strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
-                      <polyline points="8 7 12 3 16 7" /><line x1="12" y1="3" x2="12" y2="15" />
-                    </svg>
-                    Compartir ticket de reparto
-                  </button>
-                </div>
-              )}
-            </div>
-          ))
-        )}
-
-        {porSocio.length > 0 && (
-          <>
-            <div className="sec-label" style={{ marginTop: 18 }}>Resumen por socio</div>
-            <table className="tabla">
-              <thead>
-                <tr><th style={{ textAlign: 'left' }}>Socio</th><th>Vendido</th><th>Facturado</th></tr>
-              </thead>
-              <tbody>
-                {porSocio.map((r, i) => (
-                  <tr key={i}>
-                    <td style={{ textAlign: 'left' }}>{r.nombre}</td>
-                    <td>{tnGranoTexto(r.tnPorGrano)}</td>
-                    <td className="soja">${FMT(r.importe)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
-
-        <div className="resumen">
-          <span>Total vendido: <b>{tnGranoTexto(tnPorGrano)}</b></span>
-          <span>Facturado total: <b className="soja">${FMT(fact.total)}</b></span>
-          {fact.ultimo && <span>Último mes ({fact.ultimo.mes}): <b className="soja">${FMT(fact.ultimo.importe)}</b></span>}
-        </div>
+      <div className="card muted historia-cta" style={{ marginTop: 12 }}>
+        El detalle de todas las ventas —individuales y conjuntas, por socio y por fecha— está en la pestaña <b>Historia</b>.
       </div>
     </div>
   )

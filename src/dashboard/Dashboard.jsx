@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient.js'
 import { getCampaniaActiva, getSocios, getVentas, getPrecios } from '../lib/db.js'
 import Decision from './Decision.jsx'
 import Ventas from './Ventas.jsx'
+import Historia from './Historia.jsx'
 import Precios from './Precios.jsx'
 import Socios from './Socios.jsx'
 import Perfil from './Perfil.jsx'
@@ -10,7 +11,7 @@ import Perfil from './Perfil.jsx'
 // El orden de este array define el orden en la barra (izq. → der.) y cuál es la
 // pestaña por defecto (índice 0). El contenido se resuelve por NOMBRE más abajo,
 // así reordenar acá alcanza para cambiar la navegación sin tocar nada más.
-const TABS = ['Ventas', 'Decisión', 'Precios', 'Socios']
+const TABS = ['Ventas', 'Historia', 'Decisión', 'Precios', 'Socios']
 
 export default function Dashboard({ perfil }) {
   const grupo = perfil.grupos
@@ -74,7 +75,9 @@ export default function Dashboard({ perfil }) {
         <Perfil perfil={perfil} campania={data.campania} />
       ) : TABS[tab] === 'Ventas' ? (
         <Ventas grupo={grupo} campania={data.campania} socios={data.socios}
-          ventas={data.ventas} precios={data.precios} onCambio={cargar} />
+          precios={data.precios} onCambio={cargar} />
+      ) : TABS[tab] === 'Historia' ? (
+        <Historia campania={data.campania} socios={data.socios} ventas={data.ventas} />
       ) : TABS[tab] === 'Decisión' ? (
         <Decision precios={data.precios} />
       ) : TABS[tab] === 'Precios' ? (

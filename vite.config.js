@@ -6,5 +6,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: './',
-  server: { port: 5180 },
+  // host: true expone el dev server en la red local (0.0.0.0), para abrirlo
+  // desde el iPhone en Safari: http://<ip-del-mac>:5180 (misma WiFi).
+  server: { port: 5180, host: true },
 })

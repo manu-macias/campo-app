@@ -215,15 +215,26 @@ export async function unirseConCodigo({ codigo, nombreUsuario }) {
   return data // grupo_id
 }
 
-export async function registrarVenta({ grupoId, campaniaId, socioId, fecha, toneladas, precioSoja, grano }) {
-  const { error } = await supabase.from('ventas').insert({
-    grupo_id: grupoId,
-    campania_id: campaniaId,
-    socio_id: socioId,
-    fecha,
-    toneladas: Number(toneladas),
-    precio_soja: Number(precioSoja), // precio del grano de esta venta
-    grano: grano || 'soja',
-  })
+// Registra una operación de venta (Fase 8). `lineas` es un arreglo de
+// { socioId, toneladas } — una sola línea = venta INDIVIDUAL; dos o más =
+// venta CONJUNTA. Todas comparten fecha, grano, precio y un mismo operacion_id,
+// que es lo que después permite mostrarlas juntas y saber que fueron una única
+// venta (y no dos ventas sueltas que cayeron el mismo día).
+export async function registrarOperacion({ grupoId, campaniaId, fecha, precioSoja, grano, lineas }) {
+  const operacionId = (crypto.randomUUID && crypto.randomUUID()) || undefined
+  const filas = lineas
+    .filter(l => l.socioId && Number(l.toneladas) > 0)
+    .map(l => ({
+      grupo_id: grupoId,
+      campania_id: campaniaId,
+      socio_id: l.socioId,
+      fecha,
+      toneladas: Number(l.toneladas),
+      precio_soja: Number(precioSoja), // precio del grano de esta venta
+      grano: grano || 'soja',
+      ...(operacionId ? { operacion_id: operacionId } : {}),
+    }))
+  if (!filas.length) throw new Error('No hay líneas válidas para registrar.')
+  const { error } = await supabase.from('ventas').insert(filas)
   if (error) throw error
 }
