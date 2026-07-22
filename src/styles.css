@@ -157,13 +157,34 @@ input:focus { border-color: var(--soja); }
 .card-title { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 12px; }
 
 .venta-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-.venta-form select, .venta-form input[type="date"], .venta-form input[type="number"],
+/* Controles del formulario de venta: estilados a mano (appearance:none) para que
+   se vean IGUAL en iOS/Android/web. El render nativo descentraba el select y
+   centraba la fecha. Altura fija => las 3 columnas quedan perfectamente parejas. */
 .linea-campos select, .field-fecha input[type="date"], .linea-campos input[type="number"] {
-  width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
-  color: var(--text); font-size: 14px; padding: 10px 11px; outline: none; font-family: inherit;
-  color-scheme: dark;
+  width: 100%; height: 44px; box-sizing: border-box; margin: 0;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text); font-size: 14px; padding: 0 12px; outline: none;
+  font-family: inherit; text-align: left; color-scheme: dark;
+  -webkit-appearance: none; appearance: none;
 }
 .linea-campos select:focus, .linea-campos input:focus, .field-fecha input:focus { border-color: var(--soja); }
+/* Select: chevron propio a la derecha (reemplaza la flecha nativa que descentra) */
+.linea-campos select {
+  padding-right: 32px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b6c4ba' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 11px center; background-size: 15px;
+}
+.linea-campos select:invalid { color: var(--muted); } /* placeholder "Socio" en gris */
+/* Number: sin flechitas de incremento (spinner) */
+.linea-campos input[type="number"] { -moz-appearance: textfield; }
+.linea-campos input[type="number"]::-webkit-inner-spin-button,
+.linea-campos input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+/* Date: valor a la izquierda (iOS lo centra por defecto) e ícono de calendario a la derecha */
+.field-fecha input[type="date"] { position: relative; }
+.field-fecha input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
+.field-fecha input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute; right: 12px; opacity: .55; cursor: pointer;
+}
 
 /* Tipo de venta: segmento Individual / Conjunta */
 .modo-seg {

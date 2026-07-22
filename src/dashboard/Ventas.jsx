@@ -150,8 +150,8 @@ export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
               <div className="linea" key={i}>
                 {modo === 'conjunta' && <span className="linea-idx">{i + 1}</span>}
                 <div className="linea-campos">
-                  <select value={l.socioId} onChange={e => setLinea(i, { socioId: e.target.value })}>
-                    <option value="">Socio</option>
+                  <select required value={l.socioId} onChange={e => setLinea(i, { socioId: e.target.value })}>
+                    <option value="" disabled>Socio</option>
                     {socios.map(s => (
                       <option key={s.id} value={s.id} disabled={ocupados.has(s.id)}>{s.nombre}</option>
                     ))}
