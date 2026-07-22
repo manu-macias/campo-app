@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { registrarOperacion } from '../lib/db.js'
-import { FMT, ultimoPrecioDe, labelGrano } from '../lib/scoring.js'
+import { FMT, precioParaFecha, labelGrano } from '../lib/scoring.js'
 
 const hoy = () => new Date().toISOString().slice(0, 10)
 const lineaVacia = () => ({ socioId: '', tn: '', pesos: '' })
 // Toneladas con hasta 2 decimales (FMT redondea a entero: sirve solo para $).
 const FTN = (n) => Number(n).toLocaleString('es-AR', { maximumFractionDigits: 2 })
+const fmtFecha = (f) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}`
 
 export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
   // Granos del contrato (los contratos viejos, sin migrar, quedan como soja).
@@ -24,10 +25,13 @@ export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
     return <div className="card muted">No hay una campaña activa para este grupo.</div>
   }
 
-  // Precio oficial del grano elegido (última pizarra no nula; no editable).
-  const precioHoy = ultimoPrecioDe(precios, grano).precio
+  // Cotización con la que se liquida esta venta: la pizarra del día hábil
+  // siguiente a la fecha elegida (T+1). Para una fecha pasada toma la de ese
+  // día, no la de hoy; para hoy cae en la última conocida (provisional).
+  const cotiz = precioParaFecha(precios, grano, fecha)
+  const precioHoy = cotiz.precio
 
-  // Calculadora bidireccional tn ↔ pesos, por línea, al precio del grano elegido.
+  // Calculadora bidireccional tn ↔ pesos, por línea, al precio de la cotización.
   const setLinea = (i, patch) => setLineas(ls => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)))
   const onTn = (i, raw) => {
     const n = parseFloat(raw)
@@ -39,16 +43,15 @@ export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
     const tn = precioHoy && raw !== '' && !isNaN(n) ? String(Math.round((n / precioHoy) * 100) / 100) : ''
     setLinea(i, { pesos: raw, tn })
   }
-  // Al cambiar de grano, recalcula los pesos de todas las líneas con el precio nuevo.
-  const onGrano = (g) => {
-    const p = ultimoPrecioDe(precios, g).precio
-    setGrano(g)
-    setLineas(ls => ls.map(l => {
-      const n = parseFloat(l.tn)
-      const pesos = p && l.tn !== '' && !isNaN(n) ? String(Math.round(n * p)) : ''
-      return { ...l, pesos }
-    }))
-  }
+  // Recalcula los pesos de todas las líneas con un precio nuevo (tn manda).
+  const recalcPesos = (p) => setLineas(ls => ls.map(l => {
+    const n = parseFloat(l.tn)
+    const pesos = p && l.tn !== '' && !isNaN(n) ? String(Math.round(n * p)) : ''
+    return { ...l, pesos }
+  }))
+  // Al cambiar grano o fecha, el precio aplicable cambia → recalcula los pesos.
+  const onGrano = (g) => { setGrano(g); recalcPesos(precioParaFecha(precios, g, fecha).precio) }
+  const onFecha = (f) => { setFecha(f); recalcPesos(precioParaFecha(precios, grano, f).precio) }
 
   // Cambio de modo: individual = 1 línea; conjunta = arranca en 2.
   const cambiarModo = (m) => {
@@ -141,7 +144,7 @@ export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
           <div className="field-fecha">
             <label htmlFor="venta-fecha">Fecha de la venta</label>
             <input id="venta-fecha" type="date" value={fecha} max={hoy()}
-              onChange={e => setFecha(e.target.value)} />
+              onChange={e => onFecha(e.target.value)} />
           </div>
           <div className="field-cobro">
             <label htmlFor="venta-cobro">Días hasta el cobro</label>
@@ -188,7 +191,8 @@ export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
 
         <div className="venta-rate">
           {precioHoy ? (
-            <>Cotización {multi ? labelGrano(grano) + ' ' : ''}de hoy <b>${FMT(precioHoy)}/tn</b>
+            <>Cotización {multi ? labelGrano(grano) + ' ' : ''}
+              {cotiz.provisional ? 'de hoy' : `del ${fmtFecha(cotiz.fecha)}`} <b>${FMT(precioHoy)}/tn</b>
               {totTn > 0
                 ? <> · {modo === 'conjunta' ? 'total ' : ''}{FTN(totTn)} tn = <b className="soja">${FMT(totPesos)}</b></>
                 : ' · tipeá toneladas o pesos y se calcula solo'}</>

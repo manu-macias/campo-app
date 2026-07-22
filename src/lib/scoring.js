@@ -27,6 +27,23 @@ export function ultimoPrecioDe(precios, campo) {
   return { precio: null, fecha: null }
 }
 
+// Precio con el que se liquida una venta hecha en `fecha`: la pizarra del primer
+// día hábil POSTERIOR (T+1), igual que en herramientas-campo (vendida un jueves
+// paga la del viernes; un viernes, la del lunes). `precios` viene ordenado por
+// fecha ascendente, así que el primer valor no nulo con fecha > `fecha` es ese.
+// Si todavía no hay pizarra posterior (venta de hoy y la de mañana no salió),
+// cae en la última conocida — el "precio de hoy", marcado como provisional.
+export function precioParaFecha(precios, campo, fecha) {
+  if (fecha) {
+    for (let i = 0; i < precios.length; i++) {
+      const p = precios[i]
+      if (p.fecha > fecha && p[campo] != null) return { precio: Number(p[campo]), fecha: p.fecha, provisional: false }
+    }
+  }
+  const ult = ultimoPrecioDe(precios, campo)
+  return { precio: ult.precio, fecha: ult.fecha, provisional: true }
+}
+
 // Último precio CONOCIDO de cada serie. La serie de dólar tiene fechas más
 // nuevas que la de soja (dólar corre todos los días, incluidos fines de semana;
 // la pizarra de soja solo días hábiles y con rezago), así que la última fila por
