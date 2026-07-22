@@ -87,7 +87,8 @@ export default function Ventas({ grupo, campania, socios, precios, onCambio }) {
     try {
       await registrarOperacion({
         grupoId: grupo.id, campaniaId: campania.id,
-        fecha, precioSoja: precioHoy, grano, lineas: validas,
+        fecha, precioSoja: precioHoy, grano,
+        lineas: validas.map(l => ({ socioId: l.socioId, toneladas: l.tn })),
       })
       const n = validas.length
       setMsg({ ok: true, txt: n > 1 ? `Venta conjunta registrada (${n} socios).` : 'Venta registrada.' })
