@@ -142,6 +142,15 @@ export async function actualizarNombre(nombre) {
   if (error) throw error
 }
 
+// Renombra el grupo (solo admin por RLS: grupos_update usa soy_admin()).
+export async function renombrarGrupo(grupoId, nombre) {
+  const limpio = (nombre || '').trim()
+  if (!limpio) throw new Error('El nombre del grupo no puede estar vacío.')
+  const { error } = await supabase.from('grupos')
+    .update({ nombre: limpio }).eq('id', grupoId)
+  if (error) throw error
+}
+
 // Todos los grupos a los que pertenece el usuario, con su rol en cada uno.
 export async function getMisGrupos() {
   const { data: { user } } = await supabase.auth.getUser()

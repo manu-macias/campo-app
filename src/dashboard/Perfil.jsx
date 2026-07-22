@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient.js'
 import {
   actualizarNombre, getMisGrupos, cambiarGrupoActivo,
-  salirDelGrupo, eliminarCuenta, unirseConCodigo,
+  salirDelGrupo, eliminarCuenta, unirseConCodigo, renombrarGrupo,
 } from '../lib/db.js'
 import { FMT, labelGrano, emojiGrano } from '../lib/scoring.js'
 
@@ -15,6 +15,8 @@ export default function Perfil({ perfil, campania }) {
   const [msg, setMsg] = useState(null)
   const [confirmSalir, setConfirmSalir] = useState(false)
   const [confirmBorrar, setConfirmBorrar] = useState(0) // 0=oculto, 1=primer aviso, 2=confirmado
+  const [editGrupo, setEditGrupo] = useState(false)
+  const [nombreGrupo, setNombreGrupo] = useState('')
 
   const cargar = async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -36,6 +38,21 @@ export default function Perfil({ perfil, campania }) {
       setMsg({ ok: true, txt: 'Nombre actualizado.' })
     } catch (e) { setMsg({ ok: false, txt: e.message }) }
     finally { setGuardando(false) }
+  }
+
+  const abrirEditGrupo = () => {
+    setNombreGrupo(grupoActual?.grupos.nombre || '')
+    setEditGrupo(true); setMsg(null)
+  }
+  const guardarGrupo = async () => {
+    if (!nombreGrupo.trim() || nombreGrupo.trim() === grupoActual?.grupos.nombre) { setEditGrupo(false); return }
+    setGuardando(true); setMsg(null)
+    try {
+      await renombrarGrupo(perfil.grupo_id, nombreGrupo)
+      window.location.reload()
+    } catch (e) {
+      setMsg({ ok: false, txt: e.message }); setGuardando(false)
+    }
   }
 
   const cambiar = async (grupoId) => {
@@ -116,7 +133,29 @@ export default function Perfil({ perfil, campania }) {
       {grupoActual && (
         <div className="card" style={{ marginTop: 12 }}>
           <div className="card-title">Grupo actual</div>
-          <div className="kv"><span>Grupo</span><span>{grupoActual.grupos.nombre}</span></div>
+          {editGrupo ? (
+            <div className="field" style={{ marginBottom: 10 }}>
+              <label>Nombre del grupo</label>
+              <input type="text" value={nombreGrupo} maxLength={60} autoFocus
+                onChange={e => setNombreGrupo(e.target.value)} placeholder="Nombre del grupo" />
+              <div className="row" style={{ marginTop: 10 }}>
+                <button className="btn ghost" disabled={guardando} onClick={() => setEditGrupo(false)}>Cancelar</button>
+                <button className="btn primary" disabled={guardando || !nombreGrupo.trim()} onClick={guardarGrupo}>
+                  {guardando ? 'Guardando…' : 'Guardar'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="kv">
+              <span>Grupo</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {grupoActual.grupos.nombre}
+                {grupoActual.rol === 'admin' && (
+                  <button className="btn-chico" onClick={abrirEditGrupo} aria-label="editar nombre del grupo">Editar</button>
+                )}
+              </span>
+            </div>
+          )}
           <div className="kv"><span>Tu rol</span><span>{grupoActual.rol === 'admin' ? 'Administrador' : 'Socio'}</span></div>
           {!confirmSalir ? (
             <button className="btn ghost" onClick={() => { setConfirmSalir(true); setMsg(null) }}>
